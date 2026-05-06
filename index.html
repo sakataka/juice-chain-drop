@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Juice Chain Drop</title>
+  </head>
+  <body>
+    <main class="shell">
+      <section class="game-stage" aria-label="Juice Chain Drop game">
+        <div class="titlebar">
+          <div>
+            <p class="eyebrow">Juice Lab</p>
+            <h1><span>Juice</span> <span>Chain</span> <span>Drop</span></h1>
+          </div>
+        </div>
+        <section class="preview-panel stage-preview">
+          <h2>Next</h2>
+          <canvas id="nextCanvas" width="300" height="84" aria-label="next pairs"></canvas>
+        </section>
+        <div class="board-shell">
+          <canvas id="gameCanvas" width="360" height="628" aria-label="game board"></canvas>
+          <div id="pauseOverlay" class="game-over-overlay pause-overlay" role="status" aria-hidden="true" hidden>
+            <div class="game-over-panel">
+              <p class="game-over-kicker">Paused</p>
+              <h2>Paused</h2>
+              <button id="resumeButton" class="primary-button" type="button">Resume</button>
+            </div>
+          </div>
+          <div id="gameOverOverlay" class="game-over-overlay" role="dialog" aria-modal="true" aria-labelledby="gameOverTitle" aria-hidden="true" hidden>
+            <div class="game-over-panel">
+              <p id="gameOverKicker" class="game-over-kicker">Top out</p>
+              <h2 id="gameOverTitle">Game Over</h2>
+              <p class="final-score"><span id="finalScoreLabel">Score</span> <strong id="finalScoreValue">0</strong></p>
+              <button id="retryButton" class="primary-button" type="button">Retry</button>
+            </div>
+          </div>
+        </div>
+        <div class="title-actions">
+          <button id="startButton" class="primary-button" type="button"><span class="button-icon" aria-hidden="true">▶</span><span class="button-label">Start</span></button>
+          <button id="pauseButton" class="primary-button secondary-button" type="button" disabled><span class="button-icon" aria-hidden="true">Ⅱ</span><span class="button-label">Pause</span></button>
+        </div>
+        <div class="touch-controls" aria-label="touch controls">
+          <button id="touchLeftButton" type="button" aria-label="Move left">←</button>
+          <button id="touchRotateButton" type="button" aria-label="Rotate">↻</button>
+          <button id="touchRightButton" type="button" aria-label="Move right">→</button>
+          <button id="touchSoftDropButton" type="button" aria-label="Soft drop">↓</button>
+          <button id="touchHardDropButton" type="button" aria-label="Hard drop">Drop</button>
+          <button id="touchPauseButton" type="button" aria-label="Pause or resume">Pause</button>
+        </div>
+      </section>
+
+      <aside class="side-panel" aria-label="game status">
+        <section class="utility-panel" aria-label="game options">
+          <button id="soundButton" class="icon-button" type="button" aria-pressed="false"><span class="button-icon" aria-hidden="true">♪</span><span class="button-label">Sound Off</span></button>
+          <button id="settingsButton" class="icon-button" type="button" aria-expanded="false" aria-controls="settingsPanel"><span class="button-icon" aria-hidden="true">⚙</span><span class="button-label">Settings</span></button>
+          <button id="aiToggleButton" class="icon-button" type="button" aria-pressed="false"><span class="button-icon" aria-hidden="true">AI</span><span class="button-label">AI Off</span></button>
+        </section>
+
+        <section class="status-grid">
+          <div class="status-card status-card--score">
+            <span>Score</span>
+            <strong id="scoreValue">0</strong>
+          </div>
+          <div class="status-card status-card--chain">
+            <span>Chain</span>
+            <strong id="chainValue">0</strong>
+          </div>
+          <div class="status-card status-card--best-score">
+            <span>Best Score</span>
+            <strong id="bestScoreValue">0</strong>
+          </div>
+          <div class="status-card">
+            <span>Best Chain</span>
+            <strong id="bestChainValue">0</strong>
+          </div>
+        </section>
+
+        <section class="challenge-panel">
+          <h2>Mode</h2>
+          <div class="challenge-card">
+            <div>
+              <span>Mode</span>
+              <strong id="modeValue">Normal</strong>
+            </div>
+            <div>
+              <small>Difficulty</small>
+              <b id="challengeProgressValue">Normal</b>
+            </div>
+            <div>
+              <i>Featured</i>
+              <mark id="featuredFruitValue">Apple</mark>
+            </div>
+            <em id="challengeResultValue">Ready</em>
+          </div>
+        </section>
+
+        <section id="settingsPanel" class="settings-panel" hidden>
+          <h2>Settings</h2>
+          <label class="field-row" for="difficultySelect">
+            <span>Difficulty</span>
+            <select id="difficultySelect">
+              <option value="easy">Easy</option>
+              <option value="normal">Normal</option>
+              <option value="hard">Hard</option>
+            </select>
+          </label>
+          <label class="field-row" for="modeSelect">
+            <span>Mode</span>
+            <select id="modeSelect">
+              <option value="normal">Normal</option>
+              <option value="scoreAttack">Score Attack</option>
+              <option value="chainChallenge">Chain Challenge</option>
+              <option value="waterCleanup">Water Cleanup</option>
+            </select>
+          </label>
+          <label class="field-row" for="aiSpeedSelect">
+            <span>AI Speed</span>
+            <select id="aiSpeedSelect">
+              <option value="slow">Slow</option>
+              <option value="normal">Normal</option>
+              <option value="fast">Fast</option>
+            </select>
+          </label>
+          <label class="field-row" for="shippingIntervalInput">
+            <span>Shipping Sec</span>
+            <input id="shippingIntervalInput" type="number" min="0" max="600" step="5" />
+          </label>
+          <label class="field-row checkbox-row" for="waterEnabledToggle">
+            <span>Water Hazards</span>
+            <input id="waterEnabledToggle" type="checkbox" />
+          </label>
+          <label class="field-row checkbox-row" for="reducedMotionToggle">
+            <span>Reduced Effects</span>
+            <input id="reducedMotionToggle" type="checkbox" />
+          </label>
+          <label class="field-row range-row" for="sfxVolumeInput">
+            <span>SFX Volume</span>
+            <input id="sfxVolumeInput" type="range" min="0" max="100" step="1" />
+          </label>
+          <label class="field-row range-row" for="bgmVolumeInput">
+            <span>BGM Volume</span>
+            <input id="bgmVolumeInput" type="range" min="0" max="100" step="1" />
+          </label>
+        </section>
+
+        <section>
+          <h2>Shipping</h2>
+          <div class="shipment-card">
+            <strong id="shipmentRemainingValue">45s</strong>
+            <b id="orderValue" class="order-icons">-</b>
+          </div>
+        </section>
+
+        <section>
+          <h2>Juices</h2>
+          <div id="juiceInventory" class="juice-grid"></div>
+        </section>
+      </aside>
+    </main>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

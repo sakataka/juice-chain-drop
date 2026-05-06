@@ -1,0 +1,18 @@
+{
+  "name": "juice-chain-drop-video",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "capture": "node scripts/capture-game-screenshots.mjs",
+    "doctor": "npx hyperframes doctor",
+    "lint": "npx hyperframes lint --json | node scripts/filter-hyperframes-lint.mjs",
+    "lint:raw": "npx hyperframes lint",
+    "inspect": "npx hyperframes inspect --samples 9",
+    "preview": "npx hyperframes preview",
+    "render": "npx hyperframes render --quiet --output output/fruit-puzzle-promo.mp4 --quality standard --fps 30",
+    "gif": "ffmpeg -y -i output/fruit-puzzle-promo.mp4 -vf \"fps=12,scale=960:-1:flags=lanczos,palettegen=max_colors=96\" /tmp/juice-promo-palette.png && ffmpeg -y -i output/fruit-puzzle-promo.mp4 -i /tmp/juice-promo-palette.png -lavfi \"fps=12,scale=960:-1:flags=lanczos[x];[x][1:v]paletteuse=dither=bayer:bayer_scale=5\" output/fruit-puzzle-promo.gif",
+    "promo:update": "node scripts/make-promo-video.mjs",
+    "promo:update:no-capture": "node scripts/make-promo-video.mjs --skip-capture"
+  }
+}

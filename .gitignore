@@ -1,0 +1,10 @@
+node_modules
+dist
+.DS_Store
+*.log
+.vite
+coverage
+test-results
+playwright-report
+video/output/*.mp4
+video/output/work-*

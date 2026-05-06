@@ -1,0 +1,29 @@
+{
+  "name": "juice-chain-drop",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "generate:bgm": "bun scripts/generate-bgm.ts",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "test:e2e": "playwright test"
+  },
+  "devDependencies": {
+    "@fontsource/fredoka": "^5.2.10",
+    "@playwright/test": "^1.59.1",
+    "@vitest/coverage-v8": "^4.1.5",
+    "typescript": "latest",
+    "vite": "latest",
+    "vitest": "^4.1.5"
+  },
+  "dependencies": {
+    "jsfxr": "^1.4.0",
+    "midi-writer-js": "^3.2.1",
+    "pixi.js": "^8.18.1",
+    "tone": "^15.1.22"
+  }
+}
