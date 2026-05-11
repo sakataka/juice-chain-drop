@@ -1,7 +1,7 @@
 import { defineConfig } from "vitest/config";
 
 export default defineConfig({
-  base: "/juice-chain-drop/",
+  base: "./",
   build: {
     chunkSizeWarningLimit: 1000,
   },
