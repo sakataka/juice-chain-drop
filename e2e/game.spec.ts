@@ -130,6 +130,31 @@ test("touch controls operate without mobile overflow", async ({ page }) => {
   expect(hasHorizontalOverflow).toBe(false);
 });
 
+test("keeps mobile start and touch controls in the first viewport", async ({ page }) => {
+  await page.goto("/");
+  const viewport = page.viewportSize();
+  test.skip(!viewport || viewport.width > 480, "mobile viewport only");
+
+  const controlBoxes = await page.evaluate(() => {
+    const ids = ["startButton", "touchLeftButton", "touchRotateButton", "touchRightButton", "touchSoftDropButton", "touchHardDropButton"];
+    return ids.map((id) => {
+      const rect = document.getElementById(id)?.getBoundingClientRect();
+      return rect ? { id, top: rect.top, bottom: rect.bottom, left: rect.left, right: rect.right } : null;
+    });
+  });
+
+  for (const box of controlBoxes) {
+    expect(box).not.toBeNull();
+    expect(box!.top).toBeGreaterThanOrEqual(0);
+    expect(box!.bottom).toBeLessThanOrEqual(viewport.height);
+    expect(box!.left).toBeGreaterThanOrEqual(0);
+    expect(box!.right).toBeLessThanOrEqual(viewport.width);
+  }
+
+  const hasHorizontalOverflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1);
+  expect(hasHorizontalOverflow).toBe(false);
+});
+
 test("AI mode can start, play, and stop", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("button", { name: "Settings" }).click();
