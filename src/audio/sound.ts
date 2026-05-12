@@ -4,7 +4,7 @@ import { BgmPreview } from "./bgmPreview";
 import { SFX_DEFINITIONS, type SfxKey } from "./sfxCatalog";
 
 export class SoundEngine {
-  enabled = false;
+  enabled = true;
   sfxVolume = 0.8;
   bgmVolume = 0.45;
 
@@ -19,7 +19,6 @@ export class SoundEngine {
     this.enabled = !this.enabled;
     if (this.enabled) {
       void this.unlock().then(() => {
-        this.startBgm();
         this.tick();
       });
     } else {
@@ -33,7 +32,6 @@ export class SoundEngine {
     await this.sfxContext?.resume();
     await this.bgmPreview?.unlock();
     this.unlocked = true;
-    this.startBgm();
   }
 
   setSfxVolume(value: number): void {

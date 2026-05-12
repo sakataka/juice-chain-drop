@@ -24,7 +24,18 @@ export function bindTouchInput(options: TouchInputOptions): void {
 }
 
 function bind(button: HTMLButtonElement, options: TouchInputOptions, command: GameInputCommand): void {
+  let handledPointer = false;
+  button.addEventListener("pointerdown", (event) => {
+    if (event.pointerType === "mouse") return;
+    handledPointer = true;
+    event.preventDefault();
+    options.dispatch(command);
+  });
   button.addEventListener("click", () => {
+    if (handledPointer) {
+      handledPointer = false;
+      return;
+    }
     options.dispatch(command);
   });
 }

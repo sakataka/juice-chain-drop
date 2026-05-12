@@ -27,8 +27,9 @@ test("starts the PixiJS game and renders a non-empty canvas", async ({ page }) =
 
 test("toggles sound and keeps the layout within the viewport", async ({ page }) => {
   await page.goto("/");
-  await page.getByRole("button", { name: "Sound Off" }).click();
   await expect(page.getByRole("button", { name: "Sound On" })).toBeVisible();
+  await page.getByRole("button", { name: "Sound On" }).click();
+  await expect(page.getByRole("button", { name: "Sound Off" })).toBeVisible();
 
   const hasHorizontalOverflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1);
   expect(hasHorizontalOverflow).toBe(false);
@@ -136,7 +137,7 @@ test("keeps mobile start and touch controls in the first viewport", async ({ pag
   test.skip(!viewport || viewport.width > 480, "mobile viewport only");
 
   const controlBoxes = await page.evaluate(() => {
-    const ids = ["startButton", "touchLeftButton", "touchRotateButton", "touchRightButton", "touchSoftDropButton", "touchHardDropButton"];
+    const ids = ["startButton", "gameCanvas", "touchLeftButton", "touchRotateButton", "touchRightButton", "touchSoftDropButton", "touchHardDropButton", "touchPauseButton"];
     return ids.map((id) => {
       const rect = document.getElementById(id)?.getBoundingClientRect();
       return rect ? { id, top: rect.top, bottom: rect.bottom, left: rect.left, right: rect.right } : null;

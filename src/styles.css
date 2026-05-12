@@ -1049,31 +1049,35 @@ h2 {
 }
 
 @media (max-width: 480px) {
+  :root {
+    --mobile-board-width: clamp(184px, min(62vw, 32svh), 220px);
+  }
+
   body {
     min-height: 100svh;
   }
 
   .shell {
     grid-template-columns: minmax(0, 1fr);
-    gap: 9px;
-    padding: 7px;
+    gap: 7px;
+    padding: 6px;
   }
 
   .game-stage,
   .side-panel {
-    padding: 8px;
+    padding: 7px;
   }
 
   .game-stage {
     display: flex;
     flex-direction: column;
-    gap: 7px;
+    gap: 6px;
   }
 
   .titlebar {
     order: 1;
-    min-height: 72px;
-    padding: 7px 11px 9px;
+    min-height: 62px;
+    padding: 5px 10px 7px;
   }
 
   .titlebar::before {
@@ -1081,12 +1085,12 @@ h2 {
   }
 
   .eyebrow {
-    padding: 3px 8px;
-    font-size: 0.64rem;
+    padding: 2px 7px;
+    font-size: 0.6rem;
   }
 
   h1 {
-    font-size: clamp(1.34rem, 7vw, 1.72rem);
+    font-size: clamp(1.2rem, 6.4vw, 1.54rem);
   }
 
   .title-actions {
@@ -1096,24 +1100,35 @@ h2 {
   }
 
   .board-shell {
-    order: 4;
-    width: clamp(232px, 72vw, 276px);
+    order: 3;
+    width: var(--mobile-board-width);
     max-width: 100%;
   }
 
+  #gameCanvas,
+  #nextCanvas {
+    height: auto !important;
+  }
+
+  #gameCanvas {
+    aspect-ratio: 360 / 628;
+  }
+
+  #nextCanvas {
+    aspect-ratio: 300 / 84;
+  }
+
   .touch-controls {
-    position: sticky;
-    top: 6px;
     z-index: 3;
-    order: 3;
+    order: 4;
     width: 100%;
-    max-width: 352px;
+    max-width: min(100%, 352px);
     margin-top: 0;
   }
 
   .stage-preview {
     order: 5;
-    width: clamp(232px, 72vw, 276px);
+    width: var(--mobile-board-width);
     max-width: 100%;
     margin-bottom: 0;
   }
@@ -1124,7 +1139,7 @@ h2 {
   }
 
   .primary-button {
-    min-height: 42px;
+    min-height: 38px;
     padding: 0 10px;
   }
 
@@ -1134,7 +1149,7 @@ h2 {
   }
 
   .touch-controls button {
-    min-height: 40px;
+    min-height: 36px;
     padding: 0 4px;
     font-size: 0.78rem;
   }
