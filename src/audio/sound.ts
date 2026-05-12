@@ -29,8 +29,9 @@ export class SoundEngine {
   async unlock(): Promise<void> {
     if (!this.enabled) return;
     this.ensureNodes();
-    await this.sfxContext?.resume();
-    await this.bgmPreview?.unlock();
+    const sfxUnlock = this.sfxContext?.resume();
+    const bgmUnlock = this.bgmPreview?.unlock();
+    await Promise.all([sfxUnlock, bgmUnlock]);
     this.unlocked = true;
   }
 

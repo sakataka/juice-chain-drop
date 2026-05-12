@@ -116,19 +116,19 @@ export class HudController {
       button.className = "juice-button";
       button.type = "button";
       button.dataset.fruit = fruit;
-      button.addEventListener("click", () => callbacks.onJuice(fruit));
+      bindPress(button, () => callbacks.onJuice(fruit));
       const elements = createJuiceButtonElements(button);
       this.juiceButtons.set(fruit, elements);
       this.juiceInventory.append(button);
     }
 
-    this.startButton.addEventListener("click", callbacks.onStart);
-    this.retryButton.addEventListener("click", callbacks.onStart);
-    this.resumeButton.addEventListener("click", callbacks.onTogglePause);
-    this.soundButton.addEventListener("click", callbacks.onSoundToggle);
-    this.settingsButton.addEventListener("click", callbacks.onToggleSettings);
-    this.aiToggleButton.addEventListener("click", callbacks.onToggleAi);
-    this.pauseButton.addEventListener("click", callbacks.onTogglePause);
+    bindPress(this.startButton, callbacks.onStart);
+    bindPress(this.retryButton, callbacks.onStart);
+    bindPress(this.resumeButton, callbacks.onTogglePause);
+    bindPress(this.soundButton, callbacks.onSoundToggle);
+    bindPress(this.settingsButton, callbacks.onToggleSettings);
+    bindPress(this.aiToggleButton, callbacks.onToggleAi);
+    bindPress(this.pauseButton, callbacks.onTogglePause);
     this.difficultySelect.addEventListener("change", () => {
       callbacks.onDifficultyChange(this.difficultySelect.value as DifficultyId);
     });
@@ -310,6 +310,23 @@ function setButtonContent(button: HTMLButtonElement, icon: string, label: string
   labelElement.textContent = label;
 
   button.append(iconElement, labelElement);
+}
+
+function bindPress(button: HTMLButtonElement, callback: () => void): void {
+  let handledPointer = false;
+  button.addEventListener("pointerdown", (event) => {
+    if (event.pointerType === "mouse") return;
+    handledPointer = true;
+    event.preventDefault();
+    callback();
+  });
+  button.addEventListener("click", () => {
+    if (handledPointer) {
+      handledPointer = false;
+      return;
+    }
+    callback();
+  });
 }
 
 function getScoreSize(score: number): "normal" | "long" | "wide" {
