@@ -16,12 +16,12 @@
     "@fontsource/fredoka": "^5.2.10",
     "@playwright/test": "^1.59.1",
     "@vitest/coverage-v8": "^4.1.5",
-    "typescript": "latest",
-    "vite": "latest",
+    "typescript": "^6.0.3",
+    "vite": "^8.0.11",
     "vitest": "^4.1.5"
   },
   "dependencies": {
-    "jsfxr": "^1.4.0",
+    "jsfxr": "^1.4.1",
     "midi-writer-js": "^3.2.1",
     "pixi.js": "^8.18.1",
     "tone": "^15.1.22"
