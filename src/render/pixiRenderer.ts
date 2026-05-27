@@ -76,6 +76,7 @@ export class PixiGameRenderer {
     await this.loadAssets();
     this.gameApp.stage.addChild(this.backgroundLayer, this.boardLayer, this.ghostLayer, this.activeLayer, this.effectsLayer);
     this.nextApp.stage.addChild(this.nextLayer);
+    this.boardRenderer.drawBackground();
     this.gameApp.ticker.add(() => this.visualEffectsRenderer.draw(performance.now()));
     this.ready = true;
   }
@@ -86,7 +87,6 @@ export class PixiGameRenderer {
 
   render(snapshot: RenderSnapshot): void {
     if (!this.ready) return;
-    this.boardRenderer.drawBackground();
     this.boardRenderer.drawBoard(snapshot.board);
     this.boardRenderer.drawGhost(snapshot.board, snapshot.active, snapshot.state);
     this.boardRenderer.drawActivePiece(snapshot.active);

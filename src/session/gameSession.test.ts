@@ -39,6 +39,16 @@ describe("GameSession", () => {
     expect(session.getRenderSnapshot().state).toBe("playing");
   });
 
+  it("only requests render work when visible game state changes", () => {
+    const { session } = createSession({ settings: { ...settings, waterEnabled: false } });
+    session.start();
+
+    expect(session.tick(1).shouldRender).toBe(false);
+    expect(session.move(-1).shouldRender).toBe(true);
+    expect(session.rotate().shouldRender).toBe(true);
+    expect(session.softDrop().shouldRender).toBe(true);
+  });
+
   it("blocks gameplay commands while paused", () => {
     const { session } = createSession();
     session.start();

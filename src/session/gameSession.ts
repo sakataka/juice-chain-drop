@@ -115,23 +115,29 @@ export class GameSession {
   move(dx: number): GameSessionCommandResult {
     if (this.game.state !== "playing" || !this.game.active) return NO_RESULT;
     const result = createResult({ shouldUpdateHud: true });
-    if (this.game.tryMove(dx, 0)) result.sounds.push({ kind: "tick" });
+    if (this.game.tryMove(dx, 0)) {
+      result.sounds.push({ kind: "tick" });
+      result.shouldRender = true;
+    }
     return result;
   }
 
   rotate(): GameSessionCommandResult {
     if (this.game.state !== "playing" || !this.game.active) return NO_RESULT;
     const result = createResult({ shouldUpdateHud: true });
-    if (this.game.tryRotate()) result.sounds.push({ kind: "pop" });
+    if (this.game.tryRotate()) {
+      result.sounds.push({ kind: "pop" });
+      result.shouldRender = true;
+    }
     return result;
   }
 
   softDrop(): GameSessionCommandResult {
     if (this.game.state !== "playing" || !this.game.active) return NO_RESULT;
     if (this.game.tryMove(0, 1)) {
-      return createResult({ sounds: [{ kind: "whoosh", strength: 0.22 }], shouldUpdateHud: true });
+      return createResult({ sounds: [{ kind: "whoosh", strength: 0.22 }], shouldRender: true, shouldUpdateHud: true });
     }
-    const result = createResult({ sounds: [{ kind: "tap" }], shouldUpdateHud: true });
+    const result = createResult({ sounds: [{ kind: "tap" }], shouldRender: true, shouldUpdateHud: true });
     this.applySettleReport(this.game.settlePiece(), result);
     return result;
   }
@@ -158,7 +164,7 @@ export class GameSession {
   useJuice(fruit: Fruit): GameSessionCommandResult {
     const report = this.game.useJuice(fruit);
     if (!report) return NO_RESULT;
-    const result = createResult({ sounds: [{ kind: "pour" }], shouldUpdateHud: true });
+    const result = createResult({ sounds: [{ kind: "pour" }], shouldRender: true, shouldUpdateHud: true });
     result.effects.push({ kind: "juiceSplash", effect: report.effect, primary: report.primary });
     this.applyResolveFeedback(report.resolve, result);
     return result;
@@ -170,10 +176,10 @@ export class GameSession {
 
   tick(deltaMs: number): GameSessionCommandResult {
     if (this.game.state !== "playing" || !this.game.active) {
-      return createResult({ shouldRender: true });
+      return NO_RESULT;
     }
 
-    const result = createResult({ shouldRender: true });
+    const result = createResult();
     this.dropTimer += deltaMs;
     this.advanceShipment(deltaMs, result);
     this.advanceWater(deltaMs, result);
@@ -188,8 +194,11 @@ export class GameSession {
       this.dropTimer = 0;
       if (!this.game.tryMove(0, 1)) {
         result.sounds.push({ kind: "tap" });
+        result.shouldRender = true;
         result.shouldUpdateHud = true;
         this.applySettleReport(this.game.settlePiece(), result);
+      } else {
+        result.shouldRender = true;
       }
     }
     return result;
@@ -322,6 +331,7 @@ export class GameSession {
   }
 
   private applyResolveFeedback(report: ResolveReport, result: GameSessionCommandResult): void {
+    result.shouldRender = true;
     this.challenge = updateChallenge(this.challenge, { kind: "chain", chain: report.chain }, GAME_MODE_CONFIGS[this.settings.mode]).state;
     for (const pop of report.popEvents) {
       result.effects.push({ kind: "clearPop", cells: pop.cells, fruit: pop.fruit, chain: pop.chain });
@@ -467,6 +477,7 @@ export class GameSession {
   private recordGameOver(result: GameSessionCommandResult): void {
     if (this.gameOverRecorded) return;
     this.gameOverRecorded = true;
+    result.shouldRender = true;
     if (this.challenge.result === "Active" && this.settings.mode !== "normal") {
       this.challenge = { ...this.challenge, result: "Failed" };
     }
