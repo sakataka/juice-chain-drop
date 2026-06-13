@@ -8,11 +8,12 @@ export const EFFECT_CREAM = 0xfff1bd;
 export const EFFECT_MINT = 0x39f0c2;
 export const EFFECT_ORANGE = 0xff9f2e;
 export const EFFECT_CORAL = 0xff5c54;
-export const EFFECT_INK = 0x082a31;
-export const LAB_DARK = 0x06242d;
-export const LAB_PANEL = 0x0b3a3f;
-export const LAB_GRID_A = 0x0b3037;
-export const LAB_GRID_B = 0x0e4042;
+export const EFFECT_INK = 0x2a1708;
+export const EFFECT_BRASS = 0xd9a44a;
+export const LAB_DARK = 0x241307;
+export const LAB_PANEL = 0x33200e;
+export const LAB_GRID_A = 0x2c1b0c;
+export const LAB_GRID_B = 0x3a2511;
 export const TRAY_WOOD = 0xf2a23b;
 
 export function replaceLayer(layer: Container, draw: () => void): void {

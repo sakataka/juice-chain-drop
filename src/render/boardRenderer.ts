@@ -1,7 +1,7 @@
 import { Container, Graphics, TilingSprite } from "pixi.js";
 import { BOARD_X, BOARD_Y, CELL, COLS, HEIGHT, getPieceCells, isFruitCell, isValidPiece, isWaterCell, movedPiece, ROWS, WIDTH } from "../core";
 import type { Board, FruitPair, GameState, PairPiece } from "../core";
-import { addFruitSprite, drawWaterCell, EFFECT_CORAL, EFFECT_CREAM, EFFECT_INK, EFFECT_MINT, EFFECT_ORANGE, LAB_DARK, LAB_GRID_A, LAB_GRID_B, LAB_PANEL, replaceLayer, TRAY_WOOD } from "./pixiRenderHelpers";
+import { addFruitSprite, drawWaterCell, EFFECT_BRASS, EFFECT_CORAL, EFFECT_CREAM, EFFECT_INK, EFFECT_ORANGE, LAB_DARK, LAB_GRID_A, LAB_GRID_B, LAB_PANEL, replaceLayer, TRAY_WOOD } from "./pixiRenderHelpers";
 import type { PixiRenderTextures } from "./renderTypes";
 
 export type BoardRenderLayers = {
@@ -26,7 +26,7 @@ export class BoardRenderer {
       const base = new Graphics();
       base.rect(0, 0, WIDTH, HEIGHT).fill(LAB_DARK);
       base.rect(0, HEIGHT * 0.52, WIDTH, HEIGHT * 0.48).fill({ color: 0x2a1810, alpha: 0.48 });
-      base.circle(44, 96, 82).fill({ color: EFFECT_MINT, alpha: 0.08 });
+      base.circle(44, 96, 82).fill({ color: EFFECT_BRASS, alpha: 0.08 });
       base.circle(WIDTH - 38, 168, 118).fill({ color: EFFECT_ORANGE, alpha: 0.08 });
       base.circle(WIDTH - 72, HEIGHT - 96, 92).fill({ color: EFFECT_CORAL, alpha: 0.08 });
       background.addChild(base);
@@ -52,12 +52,12 @@ export class BoardRenderer {
       garnish.roundRect(BOARD_X - 21, BOARD_Y - 21, COLS * CELL + 42, ROWS * CELL + 42, 18).fill({ color: EFFECT_INK, alpha: 0.74 });
       garnish
         .roundRect(BOARD_X - 14, BOARD_Y - 14, COLS * CELL + 28, ROWS * CELL + 28, 14)
-        .stroke({ color: EFFECT_MINT, alpha: 0.72, width: 3 });
+        .stroke({ color: EFFECT_BRASS, alpha: 0.72, width: 3 });
       garnish
         .roundRect(BOARD_X - 8, BOARD_Y - 8, COLS * CELL + 16, ROWS * CELL + 16, 12)
         .stroke({ color: EFFECT_ORANGE, alpha: 0.3, width: 2 });
       garnish.roundRect(22, 42, WIDTH - 44, 58, 12).fill({ color: 0xffffff, alpha: 0.06 });
-      garnish.roundRect(36, HEIGHT - 42, WIDTH - 72, 10, 5).fill({ color: EFFECT_MINT, alpha: 0.48 });
+      garnish.roundRect(36, HEIGHT - 42, WIDTH - 72, 10, 5).fill({ color: EFFECT_BRASS, alpha: 0.48 });
       garnish.roundRect(52, HEIGHT - 39, WIDTH - 104, 4, 2).fill({ color: EFFECT_CREAM, alpha: 0.34 });
       background.addChild(garnish);
     });
@@ -72,14 +72,14 @@ export class BoardRenderer {
       panel.roundRect(BOARD_X + COLS * CELL + 5, BOARD_Y - 2, 9, ROWS * CELL + 4, 5).fill({ color: TRAY_WOOD, alpha: 0.9 });
       panel.roundRect(BOARD_X - 5, BOARD_Y - 16, COLS * CELL + 10, 9, 5).fill({ color: TRAY_WOOD, alpha: 0.72 });
       panel.roundRect(BOARD_X - 5, BOARD_Y + ROWS * CELL + 7, COLS * CELL + 10, 9, 5).fill({ color: TRAY_WOOD, alpha: 0.72 });
-      panel.roundRect(BOARD_X - 3, BOARD_Y - 3, COLS * CELL + 6, ROWS * CELL + 6, 10).stroke({ color: EFFECT_MINT, width: 2, alpha: 0.62 });
+      panel.roundRect(BOARD_X - 3, BOARD_Y - 3, COLS * CELL + 6, ROWS * CELL + 6, 10).stroke({ color: EFFECT_BRASS, width: 2, alpha: 0.62 });
       panel.roundRect(BOARD_X, BOARD_Y, COLS * CELL, ROWS * CELL, 10).fill(LAB_PANEL);
       for (let y = 0; y < ROWS; y += 1) {
         for (let x = 0; x < COLS; x += 1) {
           panel.rect(BOARD_X + x * CELL + 1, BOARD_Y + y * CELL + 1, CELL - 2, CELL - 2).fill((x + y) % 2 === 0 ? LAB_GRID_A : LAB_GRID_B);
         }
       }
-      panel.rect(BOARD_X, BOARD_Y, COLS * CELL, ROWS * CELL).stroke({ color: EFFECT_MINT, width: 2, alpha: 0.44 });
+      panel.rect(BOARD_X, BOARD_Y, COLS * CELL, ROWS * CELL).stroke({ color: EFFECT_BRASS, width: 2, alpha: 0.44 });
       panel
         .moveTo(BOARD_X + 10, BOARD_Y + 8)
         .lineTo(BOARD_X + COLS * CELL - 10, BOARD_Y + 8)
@@ -88,13 +88,13 @@ export class BoardRenderer {
         panel
           .moveTo(BOARD_X, BOARD_Y + y * CELL)
           .lineTo(BOARD_X + COLS * CELL, BOARD_Y + y * CELL)
-          .stroke({ color: EFFECT_MINT, width: 1, alpha: 0.14 });
+          .stroke({ color: EFFECT_BRASS, width: 1, alpha: 0.14 });
       }
       for (let x = 1; x < COLS; x += 1) {
         panel
           .moveTo(BOARD_X + x * CELL, BOARD_Y)
           .lineTo(BOARD_X + x * CELL, BOARD_Y + ROWS * CELL)
-          .stroke({ color: EFFECT_MINT, width: 1, alpha: 0.14 });
+          .stroke({ color: EFFECT_BRASS, width: 1, alpha: 0.14 });
       }
       boardLayer.addChild(panel);
 
@@ -150,9 +150,9 @@ export class BoardRenderer {
         const x = startX + index * (panelWidth + panelGap);
         const isNext = index === 0;
         const panel = new Graphics();
-        panel.roundRect(x, 8, panelWidth, 64, 9).fill(isNext ? 0x124f4e : 0x0b343b);
-        panel.roundRect(x + 4, 13, panelWidth - 8, 54, 7).fill(isNext ? 0x092a31 : 0x08252e);
-        panel.roundRect(x + 0.5, 8.5, panelWidth - 1, 63, 9).stroke({ color: isNext ? EFFECT_ORANGE : EFFECT_MINT, width: isNext ? 2 : 1, alpha: isNext ? 0.92 : 0.46 });
+        panel.roundRect(x, 8, panelWidth, 64, 9).fill(isNext ? 0x4a2d12 : 0x33200e);
+        panel.roundRect(x + 4, 13, panelWidth - 8, 54, 7).fill(isNext ? 0x271505 : 0x21120a);
+        panel.roundRect(x + 0.5, 8.5, panelWidth - 1, 63, 9).stroke({ color: isNext ? EFFECT_ORANGE : EFFECT_BRASS, width: isNext ? 2 : 1, alpha: isNext ? 0.92 : 0.46 });
         if (isNext) {
           panel.roundRect(x + 7, 16, panelWidth - 14, 4, 2).fill({ color: EFFECT_CREAM, alpha: 0.3 });
         }
