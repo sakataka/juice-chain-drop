@@ -15,10 +15,10 @@
   "devDependencies": {
     "@fontsource/fredoka": "^5.2.10",
     "@playwright/test": "^1.61.1",
-    "@vitest/coverage-v8": "^4.1.9",
+    "@vitest/coverage-v8": "^4.1.10",
     "typescript": "^7.0.2",
-    "vite": "^8.1.0",
-    "vitest": "^4.1.9"
+    "vite": "^8.1.4",
+    "vitest": "^4.1.10"
   },
   "dependencies": {
     "jsfxr": "^1.4.1",
