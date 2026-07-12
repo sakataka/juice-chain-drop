@@ -139,7 +139,7 @@ function executeAiCommand(session: GameSession, command: AiCommand): GameSession
   if (command.kind === "move") return session.move(command.dx);
   if (command.kind === "rotate") return session.rotate();
   if (command.kind === "hardDrop") return session.hardDrop();
-  if (command.kind === "useJuice" || command.kind === "useNormalJuice") return session.useJuice(command.fruit);
+  if (command.kind === "useJuice") return session.useJuice(command.fruit);
   return null;
 }
 

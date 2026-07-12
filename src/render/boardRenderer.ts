@@ -4,7 +4,7 @@ import type { Board, FruitPair, GameState, PairPiece } from "../core";
 import { addFruitSprite, drawWaterCell, EFFECT_BRASS, EFFECT_CORAL, EFFECT_CREAM, EFFECT_INK, EFFECT_ORANGE, LAB_DARK, LAB_GRID_A, LAB_GRID_B, LAB_PANEL, replaceLayer, TRAY_WOOD } from "./pixiRenderHelpers";
 import type { PixiRenderTextures } from "./renderTypes";
 
-export type BoardRenderLayers = {
+type BoardRenderLayers = {
   background: Container;
   board: Container;
   ghost: Container;

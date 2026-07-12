@@ -170,10 +170,6 @@ export class GameSession {
     return result;
   }
 
-  useNormalJuice(fruit: Fruit): GameSessionCommandResult {
-    return this.useJuice(fruit);
-  }
-
   tick(deltaMs: number): GameSessionCommandResult {
     if (this.game.state !== "playing" || !this.game.active) {
       return NO_RESULT;

@@ -1,6 +1,6 @@
 import { COLS, FRUITS, NEXT_QUEUE_SIZE, ROWS } from "./constants";
 import { calculateShipmentScore, getShipmentComboMultiplier } from "./balance";
-import { applyGravity, createBoard, findClearGroups, getPieceCells, isValidPiece, makePiece, movedPiece, rotatedPiece } from "./board";
+import { applyGravity, createBoard, getPieceCells, isValidPiece, makePiece, movedPiece, rotatedPiece } from "./board";
 import { DEFAULT_DIFFICULTY, getDifficultyConfig } from "./difficulty";
 import { createJuiceOrder, isOrderFulfilled } from "./orders";
 import { applyJuiceAwards, applyJuiceEffectRules, calculateJuiceEffectBonus, getJuiceEffectCenter, resolveBoardRules } from "./rules";
@@ -182,10 +182,6 @@ export class GameModel {
     return { effect, primary: fruit, bonusScore, resolve };
   }
 
-  useNormalJuice(fruit: Fruit): JuiceUseReport | null {
-    return this.useJuice(fruit);
-  }
-
   getShipmentPreview(): ShipmentReport {
     const totalStock = this.getTotalJuiceStock();
     const streak = totalStock > 0 ? this.shipmentStreak + 1 : this.shipmentStreak;
@@ -292,5 +288,3 @@ export class GameModel {
     this.juiceStock = result.juiceStock;
   }
 }
-
-export { applyGravity, createBoard, findClearGroups, getPieceCells, isValidPiece, makePiece };

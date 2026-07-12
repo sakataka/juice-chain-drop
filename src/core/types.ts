@@ -73,7 +73,7 @@ export type JuiceEffectResult = {
   cells: GridPosition[];
 };
 
-export type ClearPop = {
+type ClearPop = {
   fruit: Fruit;
   chain: number;
   cells: GridPosition[];

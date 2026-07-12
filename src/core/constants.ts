@@ -39,7 +39,6 @@ export const JUICE_EFFECT_LABEL: Record<Fruit, string> = {
 };
 export const DEFAULT_SHIPMENT_INTERVAL_SECONDS = 45;
 export const WATER_GRACE_MS = 10_000;
-export const WATER_INTERVAL_MS = 20_000;
 export const FEATURED_FRUIT_INTERVAL_MS = 30_000;
 export const PROGRESSION_DROP_INTERVAL_MULTIPLIERS = [1, 0.9, 0.8, 0.7] as const;
 export const NEXT_QUEUE_SIZE = 3;

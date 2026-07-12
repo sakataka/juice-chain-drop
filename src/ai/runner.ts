@@ -99,6 +99,6 @@ function commandMadeProgress(command: AiCommand, result: GameSessionCommandResul
   if (command.kind === "hardDrop") return result.sounds.some((cue) => cue.kind === "tap" || cue.kind === "whoosh") || result.gameOverRecorded;
   if (command.kind === "move") return result.sounds.some((cue) => cue.kind === "tick");
   if (command.kind === "rotate") return result.sounds.some((cue) => cue.kind === "pop");
-  if (command.kind === "useJuice" || command.kind === "useNormalJuice") return result.sounds.some((cue) => cue.kind === "pour");
+  if (command.kind === "useJuice") return result.sounds.some((cue) => cue.kind === "pour");
   return true;
 }

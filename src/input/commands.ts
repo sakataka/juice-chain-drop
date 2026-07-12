@@ -11,7 +11,6 @@ export type GameInputCommand =
   | { kind: "softDrop" }
   | { kind: "hardDrop" }
   | { kind: "useJuice"; fruit: Fruit }
-  | { kind: "useNormalJuice"; fruit: Fruit }
   | { kind: "toggleSound" }
   | { kind: "toggleSettings" }
   | { kind: "toggleAi" }
@@ -72,7 +71,6 @@ export class GameCommandBus {
     softDrop: () => this.options.session.softDrop(),
     hardDrop: () => this.options.session.hardDrop(),
     useJuice: (command) => this.options.session.useJuice(command.fruit),
-    useNormalJuice: (command) => this.options.session.useJuice(command.fruit),
     toggleSound: () => {
       this.options.sound.toggle();
       this.syncSoundGameState();
@@ -180,7 +178,6 @@ function aiCommandToInputCommand(command: Exclude<AiCommand, { kind: "wait" }>):
   if (command.kind === "rotate") return { kind: "rotate" };
   if (command.kind === "hardDrop") return { kind: "hardDrop" };
   if (command.kind === "useJuice") return { kind: "useJuice", fruit: command.fruit };
-  if (command.kind === "useNormalJuice") return { kind: "useJuice", fruit: command.fruit };
   return assertNever(command);
 }
 

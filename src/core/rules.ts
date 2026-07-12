@@ -1,9 +1,8 @@
 import { calculateClearScore, calculateJuiceUseBonus } from "./balance";
 import { applyGravity, findClearGroups, inBounds, neighbors } from "./board";
 import { COLS, FRUITS, ROWS } from "./constants";
-import { getDifficultyConfig } from "./difficulty";
 import { clamp, initialFruitRecord, isFruitCell, isWaterCell, positionsFromSet } from "./utils";
-import type { Board, ClearGroup, DifficultyConfig, DifficultyId, Fruit, FruitRecord, GridPosition, JuiceEffectResult, PairPiece, ResolveReport } from "./types";
+import type { Board, ClearGroup, DifficultyConfig, Fruit, FruitRecord, GridPosition, JuiceEffectResult, PairPiece, ResolveReport } from "./types";
 
 export type BoardResolveResult = ResolveReport & {
   board: Board;
@@ -88,10 +87,6 @@ export function applyJuiceAwards(input: {
   }
 
   return { juiceProgress, juiceStock };
-}
-
-export function getJuiceThreshold(difficulty: DifficultyId): number {
-  return getDifficultyConfig(difficulty).juiceThreshold;
 }
 
 export function getJuiceEffectCenter(active: PairPiece | null): GridPosition {

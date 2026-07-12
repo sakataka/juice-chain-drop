@@ -5,7 +5,6 @@ export type AiCommand =
   | { kind: "rotate" }
   | { kind: "hardDrop" }
   | { kind: "useJuice"; fruit: Fruit }
-  | { kind: "useNormalJuice"; fruit: Fruit }
   | { kind: "wait" };
 
 export type AiPlan = {

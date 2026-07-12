@@ -1,12 +1,11 @@
 export const BGM_BPM = 112;
 export const BGM_STAGE_BPMS = [112, 120, 128, 136] as const;
 export const BGM_LOOP_BARS = 24;
-export const BGM_BEATS_PER_BAR = 4;
 export const BGM_TICKS_PER_BEAT = 480;
-export const BGM_LOOP_BEATS = BGM_LOOP_BARS * BGM_BEATS_PER_BAR;
+const BGM_BEATS_PER_BAR = 4;
 
 export type BeatDuration = 0.25 | 0.5 | 1 | 2;
-export type DrumName = "kick" | "snare" | "hat";
+type DrumName = "kick" | "snare" | "hat";
 
 export type BgmNote = {
   beat: number;
