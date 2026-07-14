@@ -14,8 +14,8 @@
           </div>
         </div>
         <section class="preview-panel stage-preview">
-          <h2>Next</h2>
-          <canvas id="nextCanvas" width="300" height="84" aria-label="next pairs"></canvas>
+          <h2>Next Drop</h2>
+          <canvas id="nextCanvas" width="300" height="84" aria-label="next fruit and juice drops"></canvas>
         </section>
         <div class="board-shell">
           <canvas id="gameCanvas" width="360" height="628" aria-label="game board"></canvas>
@@ -53,7 +53,6 @@
         <section class="utility-panel" aria-label="game options">
           <button id="soundButton" class="icon-button" type="button" aria-pressed="false"><span class="button-icon" aria-hidden="true">♪</span><span class="button-label">Sound Off</span></button>
           <button id="settingsButton" class="icon-button" type="button" aria-expanded="false" aria-controls="settingsPanel"><span class="button-icon" aria-hidden="true">⚙</span><span class="button-label">Settings</span></button>
-          <button id="aiToggleButton" class="icon-button" type="button" aria-pressed="false"><span class="button-icon" aria-hidden="true">AI</span><span class="button-label">AI Off</span></button>
         </section>
 
         <section class="status-grid">
@@ -65,13 +64,17 @@
             <span>Chain</span>
             <strong id="chainValue">0</strong>
           </div>
-          <div class="status-card status-card--best-score">
-            <span>Best Score</span>
-            <strong id="bestScoreValue">0</strong>
+          <div class="status-card status-card--juice-drops">
+            <span>Juice Drops</span>
+            <strong id="juiceDropsValue">0</strong>
           </div>
           <div class="status-card">
             <span>Best Chain</span>
             <strong id="bestChainValue">0</strong>
+          </div>
+          <div class="status-card status-card--best-score">
+            <span>Best Score</span>
+            <strong id="bestScoreValue">0</strong>
           </div>
         </section>
 
@@ -85,10 +88,6 @@
             <div>
               <small>Difficulty</small>
               <b id="challengeProgressValue">Normal</b>
-            </div>
-            <div>
-              <i>Featured</i>
-              <mark id="featuredFruitValue">Apple</mark>
             </div>
             <em id="challengeResultValue">Ready</em>
           </div>
@@ -113,22 +112,6 @@
               <option value="waterCleanup">Water Cleanup</option>
             </select>
           </label>
-          <label class="field-row" for="aiSpeedSelect">
-            <span>AI Speed</span>
-            <select id="aiSpeedSelect">
-              <option value="slow">Slow</option>
-              <option value="normal">Normal</option>
-              <option value="fast">Fast</option>
-            </select>
-          </label>
-          <label class="field-row" for="shippingIntervalInput">
-            <span>Shipping Sec</span>
-            <input id="shippingIntervalInput" type="number" min="0" max="600" step="5" />
-          </label>
-          <label class="field-row checkbox-row" for="waterEnabledToggle">
-            <span>Water Hazards</span>
-            <input id="waterEnabledToggle" type="checkbox" />
-          </label>
           <label class="field-row checkbox-row" for="reducedMotionToggle">
             <span>Reduced Effects</span>
             <input id="reducedMotionToggle" type="checkbox" />
@@ -143,17 +126,12 @@
           </label>
         </section>
 
-        <section>
-          <h2>Shipping</h2>
-          <div class="shipment-card">
-            <strong id="shipmentRemainingValue">45s</strong>
-            <b id="orderValue" class="order-icons">-</b>
+        <section class="press-panel">
+          <div class="press-heading">
+            <h2>Press Tank</h2>
+            <p>Clear fruit. Fill a bottle. Drop it back into the chain.</p>
           </div>
-        </section>
-
-        <section>
-          <h2>Juices</h2>
-          <div id="juiceInventory" class="juice-grid"></div>
+          <div id="pressTank" class="press-tank" aria-label="juice press progress"></div>
         </section>
       </aside>
     </main>

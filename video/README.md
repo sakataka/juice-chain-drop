@@ -116,9 +116,9 @@ npx hyperframes render --output output/fruit-puzzle-promo.mp4 --quality standard
 構成:
 
 - 0.0-2.65 秒: タイトルと新UIの開始画面
-- 2.35-5.4 秒: 実プレイ開始と Next / Mode / Shipping の見え方
-- 5.15-9.0 秒: 3連鎖以上のスプラッシュ演出とスコア上昇の見せ場
-- 8.65-12.4 秒: Shipping と注文、ジュースを使うか温存するかの判断
+- 2.35-5.4 秒: 実プレイ開始と Next Drop / Press Tank の見え方
+- 5.15-9.0 秒: 連鎖でボトルが完成し、Next Dropへ入る流れ
+- 8.65-12.4 秒: ボトルを盤面へ落として着弾効果を狙うJuice Drop
 - 12.15-15.2 秒: 締め
 
 ## 使用素材
@@ -127,12 +127,12 @@ npx hyperframes render --output output/fruit-puzzle-promo.mp4 --quality standard
 - `assets/screenshots/gameplay-start.png`
 - `assets/screenshots/gameplay-01.png`
 - `assets/screenshots/gameplay-combo.png`
+- `assets/screenshots/juice-drop.png`
 - `assets/screenshots/score.png`
-- `../src/assets/effects/lab/juice-splash.png`
 
 ## ナレーション原稿案
 
-フルーツを落として、つなげて、ジュースを作ろう。連鎖でスコアを伸ばし、ジュース効果と出荷ボーナスでさらに狙う。短時間で遊べる、フルーツ落ち物パズル。
+フルーツを落として、つなげて、ジュースを作ろう。完成したボトルは次の落下ピース。狙った場所へ落として果汁を弾けさせ、さらに連鎖をつなぐフルーツ落ち物パズル。
 
 ## README 用紹介文
 
@@ -142,11 +142,11 @@ npx hyperframes render --output output/fruit-puzzle-promo.mp4 --quality standard
 
 80文字程度:
 
-> フルーツを落として4つ以上つなげ、ジュース効果と出荷ボーナスでスコアを伸ばす落ち物パズルです。
+> フルーツを4つ以上つなげてボトルを作り、そのボトルを盤面へ落として次の連鎖を生む落ち物パズルです。
 
 150文字程度:
 
-> `Juice Chain Drop` は、2つ1組のフルーツを落として同じ種類を4つ以上つなげ、連鎖、ジュース効果、出荷ボーナスでハイスコアを目指す落ち物パズルゲームです。Next、Mode、Shipping、Juices を見ながら、攻めるか温存するかを短時間で判断して遊べます。
+> `Juice Chain Drop` は、2つ1組のフルーツを落として同じ種類を4つ以上つなげ、果汁をボトルへ搾る落ち物パズルゲームです。完成したボトルはNext Dropへ入り、着地点から果汁を弾けさせて盤面を変え、次の連鎖とボトルへつなげます。
 
 ## README 埋め込み例
 

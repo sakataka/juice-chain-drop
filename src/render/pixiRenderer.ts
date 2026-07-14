@@ -4,6 +4,7 @@ import juiceSplashUrl from "../assets/effects/lab/juice-splash.png";
 import counterWoodUrl from "../assets/tiles/lab/counter-lab-v2.png";
 import boardFrameUrl from "../assets/tiles/lab/board-frame-v2.png";
 import fruitStripUrl from "../assets/sprites/lab/fruits-v2.png";
+import juiceStripUrl from "../assets/sprites/lab/juices-v2.png";
 import waterSpriteUrl from "../assets/sprites/lab/water-v2.png";
 import { FRUITS, HEIGHT, SPRITE_CELL, WIDTH } from "../core";
 import type { Fruit, GridPosition, JuiceEffectResult, ProgressionStage, ShipmentReport } from "../core";
@@ -24,6 +25,7 @@ export class PixiGameRenderer {
   private readonly nextLayer = new Container();
   private readonly textures: PixiRenderTextures = {
     fruit: new Map<Fruit, Texture>(),
+    juice: new Map<Fruit, Texture>(),
     effects: [],
     splash: null,
     boardFrame: null,
@@ -90,7 +92,7 @@ export class PixiGameRenderer {
     this.boardRenderer.drawBoard(snapshot.board);
     this.boardRenderer.drawGhost(snapshot.board, snapshot.active, snapshot.state);
     this.boardRenderer.drawActivePiece(snapshot.active);
-    this.boardRenderer.drawNextQueue(snapshot.nextQueue);
+    this.boardRenderer.drawNextQueue(snapshot.nextPreviews);
   }
 
   spawnJuiceSplash(effect: JuiceEffectResult, primary: Fruit): void {
@@ -118,8 +120,9 @@ export class PixiGameRenderer {
   }
 
   private async loadAssets(): Promise<void> {
-    const [fruitStrip, effectStrip, splash, boardFrame, counterWood, water] = await Promise.all([
+    const [fruitStrip, juiceStrip, effectStrip, splash, boardFrame, counterWood, water] = await Promise.all([
       Assets.load<Texture>(fruitStripUrl),
+      Assets.load<Texture>(juiceStripUrl),
       Assets.load<Texture>(effectStripUrl),
       Assets.load<Texture>(juiceSplashUrl),
       Assets.load<Texture>(boardFrameUrl),
@@ -133,6 +136,8 @@ export class PixiGameRenderer {
     for (let index = 0; index < FRUITS.length; index += 1) {
       const sourceCell = fruitStrip.width / FRUITS.length || SPRITE_CELL;
       this.textures.fruit.set(FRUITS[index], new Texture({ source: fruitStrip.source, frame: new Rectangle(index * sourceCell, 0, sourceCell, fruitStrip.height) }));
+      const juiceCell = juiceStrip.width / FRUITS.length || SPRITE_CELL;
+      this.textures.juice.set(FRUITS[index], new Texture({ source: juiceStrip.source, frame: new Rectangle(index * juiceCell, 0, juiceCell, juiceStrip.height) }));
     }
     const effectCell = effectStrip.width / 6 || SPRITE_CELL;
     this.textures.effects = Array.from({ length: 6 }, (_, index) => new Texture({ source: effectStrip.source, frame: new Rectangle(index * effectCell, 0, effectCell, effectStrip.height) }));

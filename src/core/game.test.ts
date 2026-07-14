@@ -73,7 +73,7 @@ describe("board rules", () => {
     const pure = resolveBoardRules(board, { difficulty: game.difficulty });
     const report = game.resolveBoard("piece");
 
-    expect(report).toEqual({ chain: pure.chain, popEvents: pure.popEvents, waterClears: pure.waterClears });
+    expect(report).toEqual({ chain: pure.chain, popEvents: pure.popEvents, waterClears: pure.waterClears, pressedJuices: ["apple"] });
     expect(game.board).toEqual(pure.board);
     expect(game.score).toBe(pure.clearScore);
     expect(game.juiceStock.apple).toBe(1);
@@ -384,21 +384,46 @@ describe("game model", () => {
     expect(hard.juiceProgress.apple).toBe(0);
   });
 
-  it("awards extra juice progress for the featured fruit and rotates it", () => {
+  it("uses only cleared fruit for press progress regardless of featured state", () => {
     const game = fixedGame();
     game.start();
 
     game.awardJuice({ apple: 2, orange: 0, lemon: 0, grape: 0, melon: 0, berry: 0 });
 
     expect(game.featuredFruit).toBe("apple");
-    expect(game.juiceProgress.apple).toBe(3);
+    expect(game.juiceProgress.apple).toBe(2);
     expect(game.advanceFeaturedFruit()).toBe("orange");
 
     game.awardJuice({ apple: 2, orange: 2, lemon: 0, grape: 0, melon: 0, berry: 0 });
 
     expect(game.juiceStock.apple).toBe(1);
-    expect(game.juiceProgress.apple).toBe(1);
-    expect(game.juiceProgress.orange).toBe(3);
+    expect(game.juiceProgress.apple).toBe(0);
+    expect(game.juiceProgress.orange).toBe(2);
+    expect(game.queuedJuiceDrops).toEqual(["apple"]);
+  });
+
+  it("queues a pressed bottle in Next, drops it as a piece, and bursts on landing", () => {
+    const game = fixedGame();
+    game.start();
+    game.awardJuice({ apple: 4, orange: 0, lemon: 0, grape: 0, melon: 0, berry: 0 });
+
+    expect(game.juiceDropsCreated).toBe(1);
+    expect(game.nextPreviews[0]).toEqual({ kind: "juiceDrop", fruit: "apple" });
+
+    game.hardDrop();
+    expect(game.active?.kind).toBe("juiceDrop");
+    expect(game.active?.axis.fruit).toBe("apple");
+    expect(game.juiceStock.apple).toBe(0);
+
+    game.board[9][1] = "orange";
+    game.board[9][2] = "orange";
+    game.board[9][3] = "orange";
+    const report = game.hardDrop();
+
+    expect(report?.juiceDrop?.primary).toBe("apple");
+    expect(report?.juiceDrop?.effect.cells.length).toBeGreaterThan(0);
+    expect(game.active?.kind).toBe("fruitPair");
+    expect(game.queuedJuiceDrops).toEqual([]);
   });
 
   it("uses apple juice as a 3x3 clear around the active axis", () => {

@@ -1,5 +1,3 @@
-import { FRUITS, NORMAL_KEYS } from "../core";
-import type { Fruit } from "../core";
 import type { GameInputCommand, GameInputState } from "./commands";
 
 type KeyboardInputOptions = {
@@ -7,9 +5,8 @@ type KeyboardInputOptions = {
   dispatch: (command: GameInputCommand) => void;
 };
 
-const NORMAL_KEY_TO_FRUIT = new Map<string, Fruit>(FRUITS.map((fruit) => [NORMAL_KEYS[fruit], fruit]));
 const CONTROL_KEYS = new Set(["ArrowLeft", "ArrowRight", "ArrowDown", "ArrowUp", " ", "Enter", "Escape", "p", "P"]);
-const HANDLED_KEYS = new Set([...CONTROL_KEYS, ...NORMAL_KEY_TO_FRUIT.keys()]);
+const HANDLED_KEYS = CONTROL_KEYS;
 
 export function bindKeyboardInput(options: KeyboardInputOptions): () => void {
   const handleKeyDown = (event: KeyboardEvent): void => {
@@ -39,10 +36,6 @@ export function bindKeyboardInput(options: KeyboardInputOptions): () => void {
     if (key === "ArrowUp") options.dispatch({ kind: "rotate" });
     if (key === " ") options.dispatch({ kind: "hardDrop" });
 
-    const normalFruit = NORMAL_KEY_TO_FRUIT.get(key);
-    if (normalFruit) {
-      options.dispatch({ kind: "useJuice", fruit: normalFruit });
-    }
   };
 
   window.addEventListener("keydown", handleKeyDown);

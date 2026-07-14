@@ -41,6 +41,22 @@ export function addFruitSprite(textures: PixiRenderTextures, layer: Container, f
   layer.addChild(sprite);
 }
 
+export function addJuiceSprite(textures: PixiRenderTextures, layer: Container, fruit: Fruit, x: number, y: number, size: number, alpha: number): void {
+  const texture = textures.juice.get(fruit);
+  if (!texture) return;
+  const glow = new Graphics();
+  glow.circle(x + size / 2, y + size * 0.56, size * 0.46).fill({ color: EFFECT_ORANGE, alpha: 0.14 * alpha });
+  glow.ellipse(x + size / 2, y + size * 0.91, size * 0.28, size * 0.09).fill({ color: 0x000000, alpha: 0.28 * alpha });
+  layer.addChild(glow);
+  const sprite = new Sprite(texture);
+  sprite.x = x;
+  sprite.y = y;
+  sprite.width = size;
+  sprite.height = size;
+  sprite.alpha = alpha;
+  layer.addChild(sprite);
+}
+
 export function drawWaterCell(textures: PixiRenderTextures, layer: Container, x: number, y: number, alpha: number): void {
   const left = BOARD_X + x * CELL + 6;
   const top = BOARD_Y + y * CELL + 6;

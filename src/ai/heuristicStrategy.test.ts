@@ -308,7 +308,7 @@ describe("heuristic AI strategy", () => {
     expect(simulated.clearScore).toBe(game.score);
   });
 
-  it("includes featured fruit bonus when simulating juice stock gained by placements", () => {
+  it("simulates press progress without a featured-fruit bonus", () => {
     const game = fixedGame();
     game.start();
     const next = simulatePlacement(
@@ -358,8 +358,8 @@ describe("heuristic AI strategy", () => {
       game.difficulty,
     );
 
-    expect(next.juiceStock.apple).toBe(2);
-    expect(next.juiceProgress.apple).toBe(0);
+    expect(next.juiceStock.apple).toBe(1);
+    expect(next.juiceProgress.apple).toBe(2);
   });
 });
 

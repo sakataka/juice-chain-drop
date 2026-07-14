@@ -41,10 +41,6 @@ test("opens settings and pauses with keyboard", async ({ page }) => {
   await expect(page.getByLabel("Difficulty")).toBeVisible();
   await page.getByLabel("Difficulty").selectOption("hard");
   await page.getByLabel("Mode").selectOption("chainChallenge");
-  await expect(page.getByLabel("Shipping Sec")).toHaveValue("45");
-  await page.getByLabel("Shipping Sec").fill("0");
-  await expect(page.getByLabel("Water Hazards")).toBeChecked();
-  await page.getByLabel("Water Hazards").uncheck({ force: true });
   await expect(page.getByLabel("Reduced Effects")).toBeVisible();
   await page.getByLabel("Reduced Effects").check({ force: true });
   await page.getByLabel("SFX Volume").fill("35");
@@ -58,13 +54,11 @@ test("opens settings and pauses with keyboard", async ({ page }) => {
   await expect(page.locator("#pauseOverlay")).toBeHidden();
 });
 
-test("persists settings and shows the active difficulty juice threshold", async ({ page }) => {
+test("persists settings and shows the active difficulty press threshold", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("button", { name: "Settings" }).click();
   await page.getByLabel("Difficulty").selectOption("hard");
   await page.getByLabel("Mode").selectOption("waterCleanup");
-  await page.getByLabel("Shipping Sec").fill("75");
-  await page.getByLabel("Water Hazards").uncheck({ force: true });
   await page.getByLabel("SFX Volume").fill("35");
   await page.getByLabel("BGM Volume").fill("60");
 
@@ -73,33 +67,35 @@ test("persists settings and shows the active difficulty juice threshold", async 
   await page.getByRole("button", { name: "Settings" }).click();
   await expect(page.getByLabel("Difficulty")).toHaveValue("hard");
   await expect(page.getByLabel("Mode")).toHaveValue("waterCleanup");
-  await expect(page.getByLabel("Shipping Sec")).toHaveValue("75");
-  await expect(page.getByLabel("Water Hazards")).not.toBeChecked();
   await expect(page.getByLabel("SFX Volume")).toHaveValue("35");
   await expect(page.getByLabel("BGM Volume")).toHaveValue("60");
-  await expect(page.getByRole("button", { name: /Apple Juice.*progress 0 of 5/ })).toBeVisible();
-  await expect(page.getByRole("button", { name: /Berry Juice.*progress 0 of 5/ })).toBeVisible();
-  await expect(page.locator('.juice-button[data-fruit="apple"] small')).toHaveText("0/5");
+  await expect(page.locator('.press-lane[data-fruit="apple"]')).toHaveAttribute("aria-valuemax", "5");
+  await expect(page.locator('.press-lane[data-fruit="berry"]')).toHaveAttribute("aria-valuemax", "5");
+  await expect(page.locator('.press-lane[data-fruit="apple"] .press-progress')).toHaveText("0/5");
 });
 
-test("drops and renders water hazards in normal mode", async ({ page }) => {
+test("keeps the core screen focused on Press Tank without shipping or AI controls", async ({ page }) => {
   await page.goto("/");
+  await expect(page.getByRole("heading", { name: "Press Tank" })).toBeVisible();
+  await expect(page.locator(".press-lane")).toHaveCount(6);
+  await expect(page.getByRole("heading", { name: "Shipping" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /AI/ })).toHaveCount(0);
+});
+
+test("puts a completed bottle into Next and bursts it on landing", async ({ page }) => {
+  await page.goto("/?testMode=1&testPress=apple");
   await page.getByRole("button", { name: "Start" }).click();
 
-  await expect
-    .poll(
-      async () => {
-        const debug = await page.evaluate(() => window.__juiceDebug?.());
-        return debug?.render.board.flat().includes("water");
-      },
-      { timeout: 18_000 },
-    )
-    .toBe(true);
+  await expect(page.locator('.press-lane[data-fruit="apple"] small')).toHaveText("NEXT ×1");
+  await expect.poll(async () => (await page.evaluate(() => window.__juiceDebug?.() as any))?.render.nextPreviews[0]).toEqual({ kind: "juiceDrop", fruit: "apple" });
 
-  const screenshot = await page.locator("#gameCanvas").screenshot();
-  expect(screenshot.length).toBeGreaterThan(1_000);
-  const debug = await page.evaluate(() => window.__juiceDebug?.());
-  expect(debug?.debug.lastError).toBeNull();
+  await page.keyboard.press("Space");
+  await expect.poll(async () => (await page.evaluate(() => window.__juiceDebug?.() as any))?.render.active?.kind).toBe("juiceDrop");
+
+  await page.keyboard.press("Space");
+  await expect.poll(async () => (await page.evaluate(() => window.__juiceDebug?.() as any))?.debug.juiceSplashes).toBeGreaterThan(0);
+  const splashFrame = await page.locator("#gameCanvas").screenshot();
+  expect(splashFrame.length).toBeGreaterThan(1_000);
 });
 
 test("does not restart an active game when Enter is pressed", async ({ page }) => {
@@ -152,42 +148,9 @@ test("keeps mobile start and touch controls in the first viewport", async ({ pag
     expect(box!.right).toBeLessThanOrEqual(viewport.width);
   }
 
-  const hasHorizontalOverflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1);
-  expect(hasHorizontalOverflow).toBe(false);
-});
-
-test("AI mode can start, play, and stop", async ({ page }) => {
-  await page.goto("/");
-  await page.getByRole("button", { name: "Settings" }).click();
-  await page.getByLabel("AI Speed").selectOption("fast");
-  await page.getByRole("button", { name: "Start" }).click();
-  await page.getByRole("button", { name: "AI Off" }).click();
-  await expect(page.getByRole("button", { name: "AI On" })).toBeVisible();
-
-  await expect
-    .poll(async () => Number((await page.locator("#scoreValue").textContent())?.replaceAll(",", "")), { timeout: 4_000 })
-    .toBeGreaterThan(0);
-
-  await page.getByRole("button", { name: "AI On" }).click();
-  await expect(page.getByRole("button", { name: "AI Off" })).toBeVisible();
+  const touchHeights = await page.locator(".touch-controls button").evaluateAll((buttons) => buttons.map((button) => button.getBoundingClientRect().height));
+  expect(touchHeights.every((height) => height >= 44)).toBe(true);
 
   const hasHorizontalOverflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1);
   expect(hasHorizontalOverflow).toBe(false);
-});
-
-test("AI fast mode plays ahead without runtime errors", async ({ page }) => {
-  await page.goto("/");
-  await page.getByRole("button", { name: "Settings" }).click();
-  await page.getByLabel("AI Speed").selectOption("fast");
-  await page.getByRole("button", { name: "Start" }).click();
-  await page.getByRole("button", { name: "AI Off" }).click();
-
-  await expect
-    .poll(async () => Number((await page.locator("#scoreValue").textContent())?.replaceAll(",", "")), { timeout: 5_000 })
-    .toBeGreaterThan(0);
-
-  const debug = await page.evaluate(() => window.__juiceDebug?.());
-  expect(debug?.ai.lastReason).toContain("Lookahead");
-  expect(debug?.debug.lastError).toBeNull();
-  await expect(page.locator("#gameOverOverlay")).toBeHidden();
 });

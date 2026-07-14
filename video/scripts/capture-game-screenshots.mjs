@@ -18,30 +18,34 @@ async function save(name) {
   });
 }
 
-await page.goto(baseUrl, { waitUntil: "networkidle" });
+const testUrl = new URL(baseUrl);
+testUrl.searchParams.set("testMode", "1");
+testUrl.searchParams.set("testPress", "apple");
+
+await page.goto(testUrl.href, { waitUntil: "networkidle" });
 await page.evaluate(() => localStorage.clear());
 await page.reload({ waitUntil: "networkidle" });
 await page.waitForSelector("#gameCanvas");
 await save("title.png");
 
-await page.getByRole("button", { name: "Settings" }).click();
-await page.getByLabel("AI Speed").selectOption("fast");
-await page.getByLabel("Shipping Sec").fill("20");
-await page.getByRole("button", { name: "Settings" }).click();
 await page.getByRole("button", { name: "Start" }).click();
 await page.waitForTimeout(700);
 await save("gameplay-start.png");
-
-await page.getByRole("button", { name: "AI Off" }).click();
-await page.waitForTimeout(2600);
-await save("gameplay-01.png");
-
-await page.waitForTimeout(4200);
 await save("gameplay-combo.png");
 
 await page.keyboard.press("Space");
-await page.waitForTimeout(900);
+await page.waitForTimeout(180);
+await save("juice-drop.png");
+
+await page.keyboard.press("Space");
+await page.waitForTimeout(100);
 await save("score.png");
+
+for (const keys of [["ArrowLeft", "Space"], ["ArrowRight", "Space"], ["ArrowRight", "Space"], ["ArrowLeft", "Space"]]) {
+  for (const key of keys) await page.keyboard.press(key);
+}
+await page.waitForTimeout(500);
+await save("gameplay-01.png");
 
 const debug = await page.evaluate(() => window.__juiceDebug?.());
 console.log(JSON.stringify({ baseUrl, outputDir, score: debug?.hud?.score, lastError: debug?.debug?.lastError }, null, 2));

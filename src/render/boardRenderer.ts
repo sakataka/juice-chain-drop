@@ -1,7 +1,7 @@
 import { Container, Graphics, TilingSprite } from "pixi.js";
 import { BOARD_X, BOARD_Y, CELL, COLS, HEIGHT, getPieceCells, isFruitCell, isValidPiece, isWaterCell, movedPiece, ROWS, WIDTH } from "../core";
-import type { Board, FruitPair, GameState, PairPiece } from "../core";
-import { addFruitSprite, drawWaterCell, EFFECT_BRASS, EFFECT_CORAL, EFFECT_CREAM, EFFECT_INK, EFFECT_ORANGE, LAB_DARK, LAB_GRID_A, LAB_GRID_B, LAB_PANEL, replaceLayer, TRAY_WOOD } from "./pixiRenderHelpers";
+import type { Board, GameState, NextPiecePreview, PairPiece } from "../core";
+import { addFruitSprite, addJuiceSprite, drawWaterCell, EFFECT_BRASS, EFFECT_CORAL, EFFECT_CREAM, EFFECT_INK, EFFECT_MINT, EFFECT_ORANGE, LAB_DARK, LAB_GRID_A, LAB_GRID_B, LAB_PANEL, replaceLayer, TRAY_WOOD } from "./pixiRenderHelpers";
 import type { PixiRenderTextures } from "./renderTypes";
 
 type BoardRenderLayers = {
@@ -120,6 +120,10 @@ export class BoardRenderer {
       while (isValidPiece(ghostBoard, movedPiece(ghost, 0, 1))) {
         ghost.axis.y += 1;
       }
+      if (ghost.kind === "juiceDrop") {
+        addJuiceSprite(this.options.textures, ghostLayer, ghost.axis.fruit, BOARD_X + ghost.axis.x * CELL + 5, BOARD_Y + ghost.axis.y * CELL + 5, CELL - 10, 0.28);
+        return;
+      }
       for (const cell of getPieceCells(ghost)) {
         if (cell.y < 0) continue;
         addFruitSprite(this.options.textures, ghostLayer, cell.fruit, BOARD_X + cell.x * CELL + 6, BOARD_Y + cell.y * CELL + 6, CELL - 12, 0.22);
@@ -131,6 +135,16 @@ export class BoardRenderer {
     const { active: activeLayer } = this.options.layers;
     replaceLayer(activeLayer, () => {
       if (!active) return;
+      if (active.kind === "juiceDrop") {
+        const left = BOARD_X + active.axis.x * CELL + 1;
+        const top = BOARD_Y + active.axis.y * CELL + 1;
+        const halo = new Graphics();
+        halo.circle(left + CELL / 2, top + CELL / 2, CELL * 0.48).fill({ color: EFFECT_MINT, alpha: 0.18 });
+        halo.circle(left + CELL / 2, top + CELL / 2, CELL * 0.42).stroke({ color: EFFECT_CREAM, width: 2, alpha: 0.62 });
+        activeLayer.addChild(halo);
+        addJuiceSprite(this.options.textures, activeLayer, active.axis.fruit, left + 2, top + 2, CELL - 4, 1);
+        return;
+      }
       for (const cell of getPieceCells(active)) {
         if (cell.y < 0) continue;
         addFruitSprite(this.options.textures, activeLayer, cell.fruit, BOARD_X + cell.x * CELL + 7, BOARD_Y + cell.y * CELL + 8, CELL - 8, 0.18, 0x2a2619);
@@ -139,14 +153,14 @@ export class BoardRenderer {
     });
   }
 
-  drawNextQueue(nextQueue: FruitPair[]): void {
+  drawNextQueue(nextQueue: NextPiecePreview[]): void {
     const { next: nextLayer } = this.options.layers;
     replaceLayer(nextLayer, () => {
       const panelWidth = 88;
       const panelGap = 10;
       const startX = 8;
       for (let index = 0; index < nextQueue.length; index += 1) {
-        const pair = nextQueue[index];
+        const preview = nextQueue[index];
         const x = startX + index * (panelWidth + panelGap);
         const isNext = index === 0;
         const panel = new Graphics();
@@ -158,11 +172,18 @@ export class BoardRenderer {
         }
         nextLayer.addChild(panel);
 
+        const alpha = isNext ? 1 : 0.86;
+        if (preview.kind === "juiceDrop") {
+          const juiceGlow = new Graphics();
+          juiceGlow.circle(x + panelWidth / 2, 40, 28).fill({ color: EFFECT_MINT, alpha: isNext ? 0.2 : 0.1 });
+          nextLayer.addChild(juiceGlow);
+          addJuiceSprite(this.options.textures, nextLayer, preview.fruit, x + 17, 10, 54, alpha);
+          continue;
+        }
         const size = 29;
         const fruitX = x + 29.5;
-        const alpha = isNext ? 1 : 0.86;
-        addFruitSprite(this.options.textures, nextLayer, pair[1], fruitX, 13, size, alpha);
-        addFruitSprite(this.options.textures, nextLayer, pair[0], fruitX, 42, size, alpha);
+        addFruitSprite(this.options.textures, nextLayer, preview.pair[1], fruitX, 13, size, alpha);
+        addFruitSprite(this.options.textures, nextLayer, preview.pair[0], fruitX, 42, size, alpha);
       }
     });
   }

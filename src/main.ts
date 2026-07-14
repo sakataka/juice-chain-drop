@@ -3,7 +3,8 @@ import "@fontsource/fredoka/600.css";
 import "@fontsource/fredoka/700.css";
 import { AiRunner, heuristicAiStrategy } from "./ai";
 import { SoundEngine } from "./audio/sound";
-import type { AiSpeed } from "./core";
+import type { AiSpeed, Fruit } from "./core";
+import { FRUITS } from "./core";
 import { GameModel } from "./core/game";
 import { GameCommandBus } from "./input/commands";
 import { bindKeyboardInput } from "./input/keyboard";
@@ -21,6 +22,7 @@ type DebugState = {
   lastTickAt: number;
   lastError: string | null;
   lastResult: GameSessionCommandResult | null;
+  juiceSplashes: number;
 };
 
 type SoundCueHandlers = {
@@ -41,8 +43,12 @@ const gameCanvas = getElement<HTMLCanvasElement>("#gameCanvas");
 const nextCanvas = getElement<HTMLCanvasElement>("#nextCanvas");
 const sound = new SoundEngine();
 const renderer = new PixiGameRenderer(gameCanvas, nextCanvas);
+const game = new GameModel();
+const testParams = new URLSearchParams(window.location.search);
+const requestedTestPress = testParams.get("testPress");
+let pendingTestPress: Fruit | null = import.meta.env.DEV && testParams.has("testMode") && FRUITS.includes(requestedTestPress as Fruit) ? (requestedTestPress as Fruit) : null;
 const session = new GameSession({
-  game: new GameModel(),
+  game,
   settings: loadGameSettings(),
   stats: loadPlayerStats(),
   soundEnabled: () => sound.enabled,
@@ -63,6 +69,7 @@ const debugState: DebugState = {
   lastTickAt: 0,
   lastError: null,
   lastResult: null,
+  juiceSplashes: 0,
 };
 installDebugHook();
 
@@ -105,20 +112,15 @@ inputCommands = new GameCommandBus({
 });
 
 hud = new HudController({
-  onStart: () => inputCommands.dispatch({ kind: "start" }, { unlockSound: true }),
+  onStart: startGame,
   onSoundToggle: () => inputCommands.dispatch({ kind: "toggleSound" }),
   onTogglePause: () => inputCommands.dispatch({ kind: "togglePause" }),
   onToggleSettings: () => inputCommands.dispatch({ kind: "toggleSettings" }),
-  onToggleAi: () => inputCommands.dispatch({ kind: "toggleAi" }),
   onDifficultyChange: (difficulty) => inputCommands.dispatch({ kind: "setDifficulty", difficulty }),
   onModeChange: (mode) => inputCommands.dispatch({ kind: "setMode", mode }),
-  onAiSpeedChange: (speed) => inputCommands.dispatch({ kind: "setAiSpeed", speed }),
-  onShippingIntervalChange: (seconds) => inputCommands.dispatch({ kind: "setShippingIntervalSeconds", seconds }),
-  onWaterEnabledChange: (waterEnabled) => inputCommands.dispatch({ kind: "setWaterEnabled", waterEnabled }),
   onReducedMotionChange: (reducedMotion) => inputCommands.dispatch({ kind: "setReducedMotion", reducedMotion }),
   onSfxVolumeChange: (sfxVolume) => inputCommands.dispatch({ kind: "setSfxVolume", sfxVolume }),
   onBgmVolumeChange: (bgmVolume) => inputCommands.dispatch({ kind: "setBgmVolume", bgmVolume }),
-  onJuice: (fruit) => inputCommands.dispatch({ kind: "useJuice", fruit }, { manual: true }),
 });
 
 bindKeyboardInput({
@@ -176,6 +178,7 @@ function dispatch(result: GameSessionCommandResult): void {
       playSoundCue(cue);
     }
     for (const cue of result.effects) {
+      if (cue.kind === "juiceSplash") debugState.juiceSplashes += 1;
       playVisualEffect(cue);
     }
     if (result.shouldUpdateHud) {
@@ -207,7 +210,7 @@ function playVisualEffect(cue: VisualEffectCue): void {
 }
 
 function updateHud(): void {
-  hud.update({ ...session.getHudSnapshot(), ai: aiRunner.getState() });
+  hud.update(session.getHudSnapshot());
 }
 
 function render(): void {
@@ -216,6 +219,17 @@ function render(): void {
 
 function unlockSound(): void {
   void sound.unlock();
+}
+
+function startGame(): void {
+  inputCommands.dispatch({ kind: "start" }, { unlockSound: true });
+  if (!pendingTestPress) return;
+  const fruit = pendingTestPress;
+  pendingTestPress = null;
+  const threshold = game.difficulty.juiceThreshold;
+  game.awardJuice({ apple: 0, orange: 0, lemon: 0, grape: 0, melon: 0, berry: 0, [fruit]: threshold });
+  updateHud();
+  render();
 }
 
 function aiIntervalForSpeed(speed: AiSpeed): number {

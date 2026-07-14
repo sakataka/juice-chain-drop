@@ -49,9 +49,14 @@ export type GameSettings = {
 export type FruitRecord = Record<Fruit, number>;
 
 export type PairPiece = {
+  kind?: "fruitPair" | "juiceDrop";
   axis: { x: number; y: number; fruit: Fruit };
   satellite: { fruit: Fruit; rotation: number };
 };
+
+export type NextPiecePreview =
+  | { kind: "fruitPair"; pair: FruitPair }
+  | { kind: "juiceDrop"; fruit: Fruit };
 
 export type GridPosition = {
   x: number;
@@ -83,6 +88,12 @@ export type ResolveReport = {
   chain: number;
   popEvents: ClearPop[];
   waterClears: GridPosition[];
+  pressedJuices?: Fruit[];
+  juiceDrop?: {
+    effect: JuiceEffectResult;
+    primary: Fruit;
+    bonusScore: number;
+  };
 };
 
 export type JuiceUseReport = {

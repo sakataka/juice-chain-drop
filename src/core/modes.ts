@@ -9,8 +9,8 @@ export const GAME_MODE_CONFIGS: Record<GameModeId, GameModeConfig> = {
   scoreAttack: {
     id: "scoreAttack",
     label: "Score Attack",
-    description: "Race to 1,000,000 points",
-    targetScore: 1_000_000,
+    description: "Race to 50,000 points",
+    targetScore: 50_000,
   },
   chainChallenge: {
     id: "chainChallenge",

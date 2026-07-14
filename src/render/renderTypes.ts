@@ -1,10 +1,11 @@
 import type { Texture } from "pixi.js";
-import type { Board, Fruit, FruitPair, GameState, GridPosition, PairPiece, ProgressionStage } from "../core";
+import type { Board, Fruit, FruitPair, GameState, GridPosition, NextPiecePreview, PairPiece, ProgressionStage } from "../core";
 
 export type RenderSnapshot = {
   board: Board;
   active: PairPiece | null;
   nextQueue: FruitPair[];
+  nextPreviews: NextPiecePreview[];
   state: GameState;
 };
 
@@ -74,6 +75,7 @@ export type VisualEffect =
 
 export type PixiRenderTextures = {
   fruit: Map<Fruit, Texture>;
+  juice: Map<Fruit, Texture>;
   effects: Texture[];
   splash: Texture | null;
   boardFrame: Texture | null;

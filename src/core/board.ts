@@ -8,12 +8,24 @@ export function createBoard(): Board {
 
 export function makePiece(pair: FruitPair): PairPiece {
   return {
+    kind: "fruitPair",
     axis: { x: 2, y: 0, fruit: pair[0] },
     satellite: { fruit: pair[1], rotation: 0 },
   };
 }
 
+export function makeJuiceDrop(fruit: PairPiece["axis"]["fruit"]): PairPiece {
+  return {
+    kind: "juiceDrop",
+    axis: { x: 2, y: 0, fruit },
+    satellite: { fruit, rotation: 0 },
+  };
+}
+
 export function getPieceCells(piece: PairPiece): PieceCell[] {
+  if (piece.kind === "juiceDrop") {
+    return [{ x: piece.axis.x, y: piece.axis.y, fruit: piece.axis.fruit, role: "axis" }];
+  }
   const offset = ROTATIONS[piece.satellite.rotation];
   return [
     { x: piece.axis.x, y: piece.axis.y, fruit: piece.axis.fruit, role: "axis" },
@@ -37,6 +49,7 @@ export function movedPiece(piece: PairPiece, dx: number, dy: number): PairPiece 
 }
 
 export function rotatedPiece(piece: PairPiece, kick: number): PairPiece {
+  if (piece.kind === "juiceDrop") return piece;
   return {
     ...piece,
     axis: { ...piece.axis, x: piece.axis.x + kick },

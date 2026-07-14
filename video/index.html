@@ -6,8 +6,8 @@
     <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
     <style>
       @font-face {
-        font-family: "Fredoka";
-        src: url("../node_modules/@fontsource/fredoka/files/fredoka-latin-700-normal.woff2") format("woff2");
+        font-family: "Arial Rounded MT Bold";
+        src: local("Arial Rounded MT Bold");
         font-weight: 700;
       }
 
@@ -22,7 +22,7 @@
         height: 1080px;
         overflow: hidden;
         background: #fff7dc;
-        font-family: "Fredoka", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        font-family: "Arial Rounded MT Bold", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
         color: #16324a;
       }
 
@@ -367,37 +367,36 @@
       </section>
 
       <div id="play-caption" class="clip caption-pill" data-start="2.75" data-duration="2.05" data-track-index="3">
-        Next、Mode、Shipping まで一画面で確認
+        Next Drop と Press Tank で次の一手を読む
       </div>
 
       <section id="splash-feature" class="clip scene" data-start="5.15" data-duration="3.85" data-track-index="4">
         <div class="copy">
-          <div class="eyebrow">CHAIN & JUICE</div>
-          <h2>3連鎖以上はスプラッシュ</h2>
-          <p class="lead">連鎖が伸びるほど、盤面の見せ場もスコアも派手に跳ねる。</p>
+          <div class="eyebrow">CHAIN → PRESS</div>
+          <h2>消した果物がボトルになる</h2>
+          <p class="lead">連鎖で果汁をためる。満タンになった一本が、次の落下ピースへ。</p>
         </div>
         <div class="screenshot-frame splash-showcase">
           <img src="assets/screenshots/gameplay-combo.png" alt="Combo gameplay with splash" />
-          <img class="splash-overlay" src="../src/assets/effects/lab/juice-splash.png" alt="" data-layout-allow-overflow />
-          <div class="chain-badge">3 CHAIN!<small>SPLASH</small></div>
+          <div class="chain-badge">PRESS READY<small>JUICE IN NEXT</small></div>
         </div>
       </section>
 
-      <div id="burst" class="clip burst" data-start="5.85" data-duration="2.15" data-track-index="5">3<br />CHAIN!</div>
+      <div id="burst" class="clip burst" data-start="5.85" data-duration="2.15" data-track-index="5">JUICE<br />READY!</div>
       <div id="combo-caption" class="clip caption-pill splash-caption" data-start="7.45" data-duration="1.25" data-track-index="6">
-        スコア、連鎖、在庫がその場で伸びていく
+        完成したボトルが Next Drop へ
       </div>
 
       <section id="score-focus" class="clip scene" data-start="8.65" data-duration="3.75" data-track-index="7">
         <div class="screenshot-frame large">
-          <img src="assets/screenshots/score.png" alt="Score and juice inventory" />
+          <img src="assets/screenshots/juice-drop.png" alt="A juice bottle falling into the board" />
         </div>
         <div class="copy">
-          <div class="eyebrow">SHIPPING</div>
-          <h2>作ったジュースは出荷ボーナスへ</h2>
+          <div class="eyebrow">JUICE DROP</div>
+          <h2>ボトルを落として、盤面を搾る</h2>
           <div class="note-stack">
-            <div class="note">注文に合わせて在庫を残すか、ジュース効果で攻めるか</div>
-            <div class="note">短時間でも判断が続くスコアアタック</div>
+            <div class="note">着地点から果汁が弾けて、果物ごとの効果を発動</div>
+            <div class="note">Juice Drop が次の連鎖とボトルを生む</div>
           </div>
         </div>
       </section>
@@ -405,7 +404,7 @@
       <section id="outro" class="clip end-card" data-start="12.15" data-duration="3.05" data-track-index="8">
         <div class="eyebrow">PLAY NOW</div>
         <h2 class="end-title">Juice Chain Drop</h2>
-        <div class="end-copy">連鎖、ジュース、出荷で伸ばすフルーツパズル</div>
+        <div class="end-copy">連鎖がジュースになり、ジュースが次の連鎖になる</div>
         <div class="repo">GitHub Pages でプレイできます</div>
       </section>
 
@@ -435,11 +434,9 @@
       tl.from("#splash-feature h2", { opacity: 0, y: 42, duration: 0.48, ease: "power3.out" }, 5.32);
       tl.from("#splash-feature .lead", { opacity: 0, x: -36, duration: 0.42, ease: "expo.out" }, 5.56);
       tl.from("#splash-feature .screenshot-frame", { opacity: 0, x: 76, scale: 0.96, duration: 0.52, ease: "back.out(1.25)" }, 5.28);
-      tl.from("#splash-feature .splash-overlay", { opacity: 0, scale: 0.44, rotation: -5, duration: 0.42, ease: "back.out(1.9)" }, 5.82);
       tl.from("#splash-feature .chain-badge", { opacity: 0, y: 42, scale: 0.72, duration: 0.34, ease: "back.out(2)" }, 5.95);
       tl.from("#burst", { opacity: 0, scale: 0.35, rotation: -10, duration: 0.34, ease: "back.out(2.1)" }, 5.85);
       tl.to("#burst", { scale: 1.07, duration: 0.22, yoyo: true, repeat: 3, ease: "power1.inOut" }, 6.22);
-      tl.to("#splash-feature .splash-overlay", { scale: 1.08, duration: 0.28, yoyo: true, repeat: 2, ease: "power1.inOut" }, 6.28);
       tl.from("#combo-caption", { opacity: 0, y: 34, duration: 0.32, ease: "power2.out" }, 7.45);
 
       tl.from("#score-focus .screenshot-frame", { opacity: 0, x: -76, scale: 0.97, duration: 0.48, ease: "power3.out" }, 8.68);

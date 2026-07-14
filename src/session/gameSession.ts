@@ -1,5 +1,5 @@
-import { FEATURED_FRUIT_INTERVAL_MS, GAME_MODE_CONFIGS, PROGRESSION_DROP_INTERVAL_MULTIPLIERS, WATER_GRACE_MS, getChallengeSnapshot, getDifficultyConfig, updateChallenge } from "../core";
-import type { ChallengeRuntimeState, ChallengeResult, DifficultyId, Fruit, GameModeId, GameSettings, GridPosition, JuiceEffectResult, ProgressionStage, RangeConfig, ResolveReport, ShipmentReport } from "../core";
+import { GAME_MODE_CONFIGS, PROGRESSION_DROP_INTERVAL_MULTIPLIERS, getChallengeSnapshot, getDifficultyConfig, updateChallenge } from "../core";
+import type { ChallengeRuntimeState, ChallengeResult, DifficultyId, Fruit, GameModeId, GameSettings, GridPosition, JuiceEffectResult, ProgressionStage, ResolveReport, ShipmentReport } from "../core";
 import { createChallengeState } from "../core";
 import { completePlayerStats } from "../storage/stats";
 import type { PlayerStats } from "../storage/stats";
@@ -60,9 +60,6 @@ const NO_RESULT: GameSessionCommandResult = {
 export class GameSession {
   private dropTimer = 0;
   private shipmentTimer = 0;
-  private waterTimer = 0;
-  private featuredFruitTimer = 0;
-  private waterNextDelay = WATER_GRACE_MS;
   private elapsedPlayingMs = 0;
   private bgmStage: ProgressionStage = 0;
   private gameOverRecorded = false;
@@ -82,9 +79,6 @@ export class GameSession {
     this.resetChallenge("Active");
     this.dropTimer = 0;
     this.shipmentTimer = 0;
-    this.waterTimer = 0;
-    this.featuredFruitTimer = 0;
-    this.waterNextDelay = WATER_GRACE_MS;
     this.elapsedPlayingMs = 0;
     this.bgmStage = 0;
     const result = createResult({ sounds: [{ kind: "bgmStage", stage: 0 }], effects: [{ kind: "clearEffects" }], shouldRender: true, shouldUpdateHud: true });
@@ -177,9 +171,6 @@ export class GameSession {
 
     const result = createResult();
     this.dropTimer += deltaMs;
-    this.advanceShipment(deltaMs, result);
-    this.advanceWater(deltaMs, result);
-    this.advanceFeaturedFruit(deltaMs, result);
     this.advanceChallenge(deltaMs, result);
     this.advanceProgression(deltaMs, result);
     if (this.game.state !== "playing" || !this.game.active) return result;
@@ -229,10 +220,6 @@ export class GameSession {
 
   setWaterEnabled(waterEnabled: boolean): GameSessionCommandResult {
     this.settings = { ...this.settings, waterEnabled };
-    if (!waterEnabled) {
-      this.waterTimer = 0;
-      this.waterNextDelay = WATER_GRACE_MS;
-    }
     this.options.saveSettings(this.settings);
     return createResult({ shouldUpdateHud: true });
   }
@@ -269,6 +256,8 @@ export class GameSession {
       state: this.game.state,
       juiceStock: this.game.juiceStock,
       juiceProgress: this.game.juiceProgress,
+      juiceDropsCreated: this.game.juiceDropsCreated,
+      queuedJuiceDrops: [...this.game.queuedJuiceDrops],
       shipment: {
         enabled: this.settings.shippingIntervalSeconds > 0,
         intervalSeconds: this.settings.shippingIntervalSeconds,
@@ -289,6 +278,7 @@ export class GameSession {
       board: this.game.board,
       active: this.game.active,
       nextQueue: this.game.nextQueue,
+      nextPreviews: this.game.nextPreviews,
       state: this.game.state,
     };
   }
@@ -328,6 +318,13 @@ export class GameSession {
 
   private applyResolveFeedback(report: ResolveReport, result: GameSessionCommandResult): void {
     result.shouldRender = true;
+    if (report.juiceDrop) {
+      result.sounds.push({ kind: "pour" });
+      result.effects.push({ kind: "juiceSplash", effect: report.juiceDrop.effect, primary: report.juiceDrop.primary });
+    }
+    if ((report.pressedJuices?.length ?? 0) > 0) {
+      result.sounds.push({ kind: "pour" });
+    }
     this.challenge = updateChallenge(this.challenge, { kind: "chain", chain: report.chain }, GAME_MODE_CONFIGS[this.settings.mode]).state;
     for (const pop of report.popEvents) {
       result.effects.push({ kind: "clearPop", cells: pop.cells, fruit: pop.fruit, chain: pop.chain });
@@ -361,43 +358,6 @@ export class GameSession {
     }
   }
 
-  private advanceShipment(deltaMs: number, result: GameSessionCommandResult): void {
-    const intervalMs = this.getShipmentIntervalMs();
-    if (intervalMs <= 0 || this.game.state !== "playing") return;
-    this.shipmentTimer += deltaMs;
-    if (this.shipmentTimer < intervalMs) return;
-    this.shipmentTimer %= intervalMs;
-    const report = this.game.shipJuices();
-    if (!report) return;
-    result.sounds.push({ kind: "shipment", totalStock: report.totalStock });
-    result.effects.push({ kind: "shipment", report });
-    result.shouldUpdateHud = true;
-    this.advanceChallenge(0, result);
-  }
-
-  private advanceWater(deltaMs: number, result: GameSessionCommandResult): void {
-    if (this.settings.mode !== "normal") return;
-    if (!this.settings.waterEnabled) return;
-    if (this.game.state !== "playing") return;
-    this.waterTimer += deltaMs;
-    if (this.waterTimer < this.waterNextDelay) return;
-    this.waterTimer %= this.waterNextDelay;
-    const difficulty = getDifficultyConfig(this.settings.difficulty);
-    this.waterNextDelay = this.randomInRange(difficulty.waterIntervalMs);
-    const burstCount = this.randomInRange(difficulty.waterBurst);
-    let dropped = 0;
-    for (let index = 0; index < burstCount; index += 1) {
-      const cell = this.game.dropWater();
-      if (!cell) break;
-      result.effects.push({ kind: "waterDrop", cell });
-      dropped += 1;
-    }
-    if (dropped <= 0) return;
-    result.sounds.push({ kind: "pour" });
-    result.shouldRender = true;
-    result.shouldUpdateHud = true;
-  }
-
   private syncWaterCleanupProgress(result: GameSessionCommandResult): void {
     if (this.settings.mode !== "waterCleanup") return;
     const target = GAME_MODE_CONFIGS.waterCleanup.targetWaterClears ?? 0;
@@ -412,15 +372,6 @@ export class GameSession {
       this.recordGameOver(result);
       result.shouldRender = true;
     }
-    result.shouldUpdateHud = true;
-  }
-
-  private advanceFeaturedFruit(deltaMs: number, result: GameSessionCommandResult): void {
-    if (this.game.state !== "playing") return;
-    this.featuredFruitTimer += deltaMs;
-    if (this.featuredFruitTimer < FEATURED_FRUIT_INTERVAL_MS) return;
-    this.featuredFruitTimer %= FEATURED_FRUIT_INTERVAL_MS;
-    this.game.advanceFeaturedFruit();
     result.shouldUpdateHud = true;
   }
 
@@ -441,17 +392,6 @@ export class GameSession {
 
   private getProgressedDropInterval(intervalMs: number): number {
     return Math.round(intervalMs * PROGRESSION_DROP_INTERVAL_MULTIPLIERS[this.bgmStage]);
-  }
-
-  private randomInRange(range: RangeConfig): number {
-    const min = Math.ceil(range.min);
-    const max = Math.floor(range.max);
-    if (max <= min) return min;
-    return min + Math.floor(this.random() * (max - min + 1));
-  }
-
-  private random(): number {
-    return Math.max(0, Math.min(0.999_999, this.options.rng?.() ?? Math.random()));
   }
 
   private getShipmentRemainingMs(): number {

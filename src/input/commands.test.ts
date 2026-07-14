@@ -107,7 +107,7 @@ describe("GameCommandBus", () => {
     expect(snapshot.nextQueue).not.toBe(session.getRenderSnapshot().nextQueue);
     expect(snapshot.shipment).toMatchObject({ enabled: true, intervalSeconds: 45 });
     expect(snapshot.settings).toMatchObject({ mode: "scoreAttack", difficulty: "normal" });
-    expect(snapshot.challenge).toMatchObject({ mode: "scoreAttack", targetScore: 1_000_000, result: "Active" });
+    expect(snapshot.challenge).toMatchObject({ mode: "scoreAttack", targetScore: 50_000, result: "Active" });
     expect(snapshot.juiceStock.apple).toBe(2);
   });
 });

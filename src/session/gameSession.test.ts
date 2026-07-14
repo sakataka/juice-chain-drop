@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { GameModel } from "../core/game";
-import { DEFAULT_SHIPMENT_INTERVAL_SECONDS, DIFFICULTY_CONFIGS, FEATURED_FRUIT_INTERVAL_MS, WATER_GRACE_MS } from "../core";
+import { DEFAULT_SHIPMENT_INTERVAL_SECONDS, DIFFICULTY_CONFIGS, WATER_GRACE_MS } from "../core";
 import type { Board, Fruit, GameSettings } from "../core";
 import type { PlayerStats } from "../storage/stats";
 import { GameSession } from "./gameSession";
@@ -37,6 +37,20 @@ describe("GameSession", () => {
     expect(rotate.sounds).toContainEqual({ kind: "pop" });
     expect(hardDrop.sounds.map((cue) => cue.kind)).toContain("tap");
     expect(session.getRenderSnapshot().state).toBe("playing");
+  });
+
+  it("turns a completed press into a falling bottle with pour and splash feedback", () => {
+    const { session, game } = createSession();
+    session.start();
+    game.awardJuice({ apple: 4, orange: 0, lemon: 0, grape: 0, melon: 0, berry: 0 });
+
+    session.hardDrop();
+    expect(session.getRenderSnapshot().active?.kind).toBe("juiceDrop");
+    const result = session.hardDrop();
+
+    expect(result.sounds).toContainEqual({ kind: "pour" });
+    expect(result.effects.some((effect) => effect.kind === "juiceSplash" && effect.primary === "apple")).toBe(true);
+    expect(session.getHudSnapshot().juiceDropsCreated).toBe(1);
   });
 
   it("only requests render work when visible game state changes", () => {
@@ -89,7 +103,7 @@ describe("GameSession", () => {
     expect(session.getHudSnapshot().challenge.result).toBe("Ready");
   });
 
-  it("ships juice automatically after the shipment interval", () => {
+  it("keeps completed juice for Juice Drop instead of auto-shipping it", () => {
     const { session, game } = createSession();
     session.start();
     game.juiceStock.apple = 2;
@@ -97,16 +111,16 @@ describe("GameSession", () => {
 
     const result = session.tick(DEFAULT_SHIPMENT_INTERVAL_SECONDS * 1000);
 
-    expect(result.sounds).toContainEqual({ kind: "shipment", totalStock: 3 });
-    expect(result.effects).toContainEqual({ kind: "shipment", report: { score: 1440, baseScore: 1440, orderBonusScore: 0, totalStock: 3, streak: 1, multiplier: 1, orderCompleted: null } });
-    expect(session.getHudSnapshot().score).toBe(1440);
-    expect(game.juiceStock.apple).toBe(0);
+    expect(result.sounds.some((cue) => cue.kind === "shipment")).toBe(false);
+    expect(result.effects.some((effect) => effect.kind === "shipment")).toBe(false);
+    expect(session.getHudSnapshot().score).toBeLessThan(1440);
+    expect(game.juiceStock.apple).toBe(2);
   });
 
   it("ends score attack when the target is reached", () => {
     const { session, game } = createSession({ settings: { ...settings, mode: "scoreAttack" } });
     session.start();
-    game.score = 1_000_000;
+    game.score = 50_000;
 
     const result = session.tick(1_500);
 
@@ -114,7 +128,7 @@ describe("GameSession", () => {
     expect(result.sounds).toContainEqual({ kind: "fanfare" });
     expect(session.getRenderSnapshot().state).toBe("gameover");
     expect(session.getHudSnapshot().challenge.result).toBe("Success");
-    expect(session.getHudSnapshot().challenge.progress).toBe("1,000,000 / 1,000,000 pts, 1.5s");
+    expect(session.getHudSnapshot().challenge.progress).toBe("50,000 / 50,000 pts, 1.5s");
     expect(session.getHudSnapshot().challenge.resultTitle).toBe("Score Attack Clear");
     expect(session.getHudSnapshot().challenge.resultDetailValue).toBe("1.5s");
   });
@@ -159,30 +173,13 @@ describe("GameSession", () => {
     expect(session.getHudSnapshot().shipment.enabled).toBe(false);
   });
 
-  it("drops normal water as random bursts after the grace period and then on a randomized interval", () => {
-    const { session, game } = createSession({ rng: sequenceRng([1, 1]) });
+  it("does not inject timed water into normal mode", () => {
+    const { session, game } = createSession();
     session.start();
 
-    expect(session.tick(WATER_GRACE_MS - 1).effects.some((effect) => effect.kind === "waterDrop")).toBe(false);
-    const first = session.tick(1);
-
-    expect(first.effects.filter((effect) => effect.kind === "waterDrop")).toHaveLength(3);
-    expect(first.sounds.filter((cue) => cue.kind === "pour")).toHaveLength(1);
-    expect(game.board.flat()).toContain("water");
-
-    expect(session.tick(DIFFICULTY_CONFIGS.normal.waterIntervalMs.max - 1).effects.some((effect) => effect.kind === "waterDrop")).toBe(false);
-    const second = session.tick(1);
-    expect(second.effects.filter((effect) => effect.kind === "waterDrop")).toHaveLength(3);
-  });
-
-  it("caps easy and hard water bursts to their difficulty ranges", () => {
-    const easy = createSession({ settings: { ...settings, difficulty: "easy" }, rng: sequenceRng([1, 1]) });
-    easy.session.start();
-    expect(easy.session.tick(WATER_GRACE_MS).effects.filter((effect) => effect.kind === "waterDrop")).toHaveLength(1);
-
-    const hard = createSession({ settings: { ...settings, difficulty: "hard" }, rng: sequenceRng([1, 1]) });
-    hard.session.start();
-    expect(hard.session.tick(WATER_GRACE_MS).effects.filter((effect) => effect.kind === "waterDrop")).toHaveLength(5);
+    const result = session.tick(WATER_GRACE_MS * 3);
+    expect(result.effects.some((effect) => effect.kind === "waterDrop")).toBe(false);
+    expect(game.board.flat()).not.toContain("water");
   });
 
   it("raises progression stage over time and speeds automatic drops", () => {
@@ -211,15 +208,15 @@ describe("GameSession", () => {
     expect(session.getBgmStage()).toBe(0);
   });
 
-  it("rotates the featured fruit on its interval", () => {
+  it("does not rotate a hidden featured-fruit modifier", () => {
     const { session } = createSession();
     session.start();
 
     expect(session.getHudSnapshot().featuredFruit).toBe("apple");
-    const result = session.tick(FEATURED_FRUIT_INTERVAL_MS);
+    const result = session.tick(30_000);
 
-    expect(result.shouldUpdateHud).toBe(true);
-    expect(session.getHudSnapshot().featuredFruit).toBe("orange");
+    expect(result.shouldUpdateHud).toBe(false);
+    expect(session.getHudSnapshot().featuredFruit).toBe("apple");
   });
 
   it("does not drop water when disabled or outside normal mode", () => {
@@ -298,11 +295,6 @@ function createSession(
     rng: overrides.rng,
   });
   return { session, game };
-}
-
-function sequenceRng(values: number[]): () => number {
-  let index = 0;
-  return () => values[index++ % values.length];
 }
 
 function fixedGame(sequence: Fruit[] = ["apple", "orange", "lemon", "grape", "melon", "berry"]): GameModel {

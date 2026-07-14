@@ -77,8 +77,7 @@ export function applyJuiceAwards(input: {
 
   for (const removed of input.awards) {
     for (const fruit of FRUITS) {
-      const featuredBonus = fruit === input.featuredFruit && removed[fruit] > 0 ? Math.ceil(removed[fruit] / 2) : 0;
-      juiceProgress[fruit] += removed[fruit] + featuredBonus;
+      juiceProgress[fruit] += removed[fruit];
       while (juiceProgress[fruit] >= input.difficulty.juiceThreshold) {
         juiceProgress[fruit] -= input.difficulty.juiceThreshold;
         juiceStock[fruit] += 1;
@@ -106,6 +105,7 @@ export function applyJuiceEffectRules(board: Board, input: { primary: Fruit; cen
   if (input.primary === "orange") clearRows(copy, [input.center.y], changedCells);
   if (input.primary === "lemon") transformNearby(copy, input.center, 4, input.activeAxisFruit ?? input.primary, changedCells);
   if (input.primary === "grape") clearColumns(copy, [input.center.x], changedCells);
+  if (input.primary === "melon") clearDiamond(copy, input.center, 2, changedCells);
   if (input.primary === "berry") transformNearby(copy, input.center, 5, getMostCommonBoardFruit(copy) ?? input.activeAxisFruit ?? input.primary, changedCells);
 
   applyGravity(copy);
@@ -166,6 +166,15 @@ function clearColumns(board: Board, cols: number[], changedCells: Set<string>): 
   for (const x of cols) {
     if (x < 0 || x >= COLS) continue;
     for (let y = 0; y < ROWS; y += 1) {
+      clearCell(board, x, y, changedCells);
+    }
+  }
+}
+
+function clearDiamond(board: Board, center: GridPosition, radius: number, changedCells: Set<string>): void {
+  for (let y = center.y - radius; y <= center.y + radius; y += 1) {
+    for (let x = center.x - radius; x <= center.x + radius; x += 1) {
+      if (Math.abs(center.x - x) + Math.abs(center.y - y) > radius) continue;
       clearCell(board, x, y, changedCells);
     }
   }

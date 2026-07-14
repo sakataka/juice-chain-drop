@@ -15,10 +15,10 @@ const settings: GameSettings = {
 };
 
 describe("challenge rules", () => {
-  it("keeps score attack active until the million point target is reached", () => {
+  it("keeps score attack active until the 50,000 point target is reached", () => {
     const result = updateChallenge(
       createChallengeState("scoreAttack", "Active"),
-      { kind: "tick", deltaMs: 120_000, score: 999_999, gameState: "playing", mode: "scoreAttack" },
+      { kind: "tick", deltaMs: 120_000, score: 49_999, gameState: "playing", mode: "scoreAttack" },
       GAME_MODE_CONFIGS.scoreAttack,
     );
 
@@ -27,18 +27,18 @@ describe("challenge rules", () => {
     expect(result.state.elapsedMs).toBe(120_000);
   });
 
-  it("ends score attack when the million point target is reached", () => {
+  it("ends score attack when the 50,000 point target is reached", () => {
     const result = updateChallenge(
       createChallengeState("scoreAttack", "Active"),
-      { kind: "tick", deltaMs: 1_250, score: 1_000_000, gameState: "playing", mode: "scoreAttack" },
+      { kind: "tick", deltaMs: 1_250, score: 50_000, gameState: "playing", mode: "scoreAttack" },
       GAME_MODE_CONFIGS.scoreAttack,
     );
 
     expect(result.shouldEndGame).toBe(true);
     expect(result.state.result).toBe("Success");
     expect(result.state.completedMs).toBe(1_250);
-    const snapshot = getChallengeSnapshot(result.state, 1_000_000, "gameover", { ...settings, mode: "scoreAttack" });
-    expect(snapshot.progress).toBe("1,000,000 / 1,000,000 pts, 1.3s");
+    const snapshot = getChallengeSnapshot(result.state, 50_000, "gameover", { ...settings, mode: "scoreAttack" });
+    expect(snapshot.progress).toBe("50,000 / 50,000 pts, 1.3s");
     expect(snapshot.resultTitle).toBe("Score Attack Clear");
     expect(snapshot.resultDetailLabel).toBe("Clear Time");
     expect(snapshot.resultDetailValue).toBe("1.3s");

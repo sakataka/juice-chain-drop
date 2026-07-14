@@ -1,11 +1,11 @@
 import { COLS, FRUITS, NEXT_QUEUE_SIZE, ROWS } from "./constants";
 import { calculateShipmentScore, getShipmentComboMultiplier } from "./balance";
-import { applyGravity, createBoard, getPieceCells, isValidPiece, makePiece, movedPiece, rotatedPiece } from "./board";
+import { applyGravity, createBoard, getPieceCells, isValidPiece, makeJuiceDrop, makePiece, movedPiece, rotatedPiece } from "./board";
 import { DEFAULT_DIFFICULTY, getDifficultyConfig } from "./difficulty";
 import { createJuiceOrder, isOrderFulfilled } from "./orders";
 import { applyJuiceAwards, applyJuiceEffectRules, calculateJuiceEffectBonus, getJuiceEffectCenter, resolveBoardRules } from "./rules";
 import { initialFruitRecord, isWaterCell, randomFruit } from "./utils";
-import type { Board, DifficultyConfig, DifficultyId, Fruit, FruitPair, FruitRecord, GameState, GridPosition, JuiceEffectResult, JuiceUseReport, PairPiece, ResolveReport, ShipmentReport } from "./types";
+import type { Board, DifficultyConfig, DifficultyId, Fruit, FruitPair, FruitRecord, GameState, GridPosition, JuiceEffectResult, JuiceUseReport, NextPiecePreview, PairPiece, ResolveReport, ShipmentReport } from "./types";
 import type { JuiceOrder } from "./orders";
 
 type ResolveSource = "piece" | "juice";
@@ -25,6 +25,8 @@ export class GameModel {
   featuredFruit: Fruit = FRUITS[this.featuredFruitIndex];
   juiceProgress: FruitRecord = initialFruitRecord(0);
   juiceStock: FruitRecord = initialFruitRecord(0);
+  queuedJuiceDrops: Fruit[] = [];
+  juiceDropsCreated = 0;
   difficulty: DifficultyConfig = getDifficultyConfig(DEFAULT_DIFFICULTY);
   currentOrder: JuiceOrder = createJuiceOrder(0, this.difficulty);
 
@@ -34,6 +36,27 @@ export class GameModel {
 
   get nextPair(): FruitPair {
     return this.nextQueue[0];
+  }
+
+  get nextPreviews(): NextPiecePreview[] {
+    const previews: NextPiecePreview[] = [];
+    let pairIndex = 0;
+    let juiceIndex = 0;
+    let expectJuice = this.active?.kind !== "juiceDrop" && this.queuedJuiceDrops.length > 0;
+
+    while (previews.length < NEXT_QUEUE_SIZE) {
+      if (expectJuice && juiceIndex < this.queuedJuiceDrops.length) {
+        previews.push({ kind: "juiceDrop", fruit: this.queuedJuiceDrops[juiceIndex] });
+        juiceIndex += 1;
+        expectJuice = false;
+        continue;
+      }
+      const pair = this.nextQueue[pairIndex] ?? this.createRandomPair();
+      previews.push({ kind: "fruitPair", pair });
+      pairIndex += 1;
+      expectJuice = juiceIndex < this.queuedJuiceDrops.length;
+    }
+    return previews;
   }
 
   start(options: { difficulty?: DifficultyId } = {}): void {
@@ -52,6 +75,8 @@ export class GameModel {
     this.currentOrder = createJuiceOrder(0, this.difficulty);
     this.juiceProgress = initialFruitRecord(0);
     this.juiceStock = initialFruitRecord(0);
+    this.queuedJuiceDrops = [];
+    this.juiceDropsCreated = 0;
 
     if (!this.active || !isValidPiece(this.board, this.active)) {
       this.endGame();
@@ -87,6 +112,7 @@ export class GameModel {
   tryRotate(): boolean {
     if (this.state !== "playing") return false;
     if (!this.active) return false;
+    if (this.active.kind === "juiceDrop") return false;
     for (const kick of [0, -1, 1, -2, 2]) {
       const nextPiece = rotatedPiece(this.active, kick);
       if (isValidPiece(this.board, nextPiece)) {
@@ -109,6 +135,11 @@ export class GameModel {
   settlePiece(): ResolveReport | null {
     if (this.state !== "playing") return null;
     if (!this.active) return null;
+    if (this.active.kind === "juiceDrop") {
+      return this.settleJuiceDrop(this.active.axis.fruit);
+    }
+
+    const hadQueuedJuiceDrop = this.queuedJuiceDrops.length > 0;
     const cells = getPieceCells(this.active);
     if (cells.some((cell) => cell.y <= 0)) {
       this.endGame();
@@ -121,12 +152,18 @@ export class GameModel {
     this.active = null;
     if (this.slowTurns > 0) this.slowTurns -= 1;
     const report = this.resolveBoard("piece");
-    this.spawnPiece();
+    this.spawnPiece(hadQueuedJuiceDrop);
     return report;
   }
 
-  spawnPiece(): void {
-    this.active = makePiece(this.takeNextPair());
+  spawnPiece(allowJuiceDrop = true): void {
+    const juice = allowJuiceDrop ? this.queuedJuiceDrops.shift() : undefined;
+    if (juice) {
+      this.juiceStock[juice] = Math.max(0, this.juiceStock[juice] - 1);
+      this.active = makeJuiceDrop(juice);
+    } else {
+      this.active = makePiece(this.takeNextPair());
+    }
     if (!isValidPiece(this.board, this.active)) {
       this.endGame();
     }
@@ -152,14 +189,14 @@ export class GameModel {
     const resolved = resolveBoardRules(this.board, { difficulty: this.difficulty, turnMultiplier });
     this.board = resolved.board;
     this.score += resolved.clearScore;
-    this.applyJuiceAwards(resolved.juiceAwards);
+    const pressedJuices = this.applyJuiceAwards(resolved.juiceAwards);
     if (source === "piece") {
       this.nextPieceScoreMultiplier = 1;
     }
 
     this.lastChain = resolved.chain;
     this.state = "playing";
-    return { chain: resolved.chain, popEvents: resolved.popEvents, waterClears: resolved.waterClears };
+    return { chain: resolved.chain, popEvents: resolved.popEvents, waterClears: resolved.waterClears, pressedJuices };
   }
 
   awardJuice(removed: FruitRecord): void {
@@ -175,6 +212,8 @@ export class GameModel {
   useJuice(fruit: Fruit): JuiceUseReport | null {
     if (this.state !== "playing" || !this.active || this.juiceStock[fruit] <= 0) return null;
     this.juiceStock[fruit] -= 1;
+    const queuedIndex = this.queuedJuiceDrops.indexOf(fruit);
+    if (queuedIndex >= 0) this.queuedJuiceDrops.splice(queuedIndex, 1);
     const effect = this.applyJuiceEffect(fruit);
     const bonusScore = calculateJuiceEffectBonus(fruit, effect.cells.length, this.difficulty);
     this.score += bonusScore;
@@ -276,7 +315,19 @@ export class GameModel {
     return count;
   }
 
-  private applyJuiceAwards(awards: FruitRecord[]): void {
+  private settleJuiceDrop(fruit: Fruit): ResolveReport {
+    if (this.slowTurns > 0) this.slowTurns -= 1;
+    const effect = this.applyJuiceEffect(fruit);
+    const bonusScore = calculateJuiceEffectBonus(fruit, effect.cells.length, this.difficulty);
+    this.score += bonusScore;
+    this.active = null;
+    const report = this.resolveBoard("juice");
+    this.spawnPiece(false);
+    return { ...report, juiceDrop: { effect, primary: fruit, bonusScore } };
+  }
+
+  private applyJuiceAwards(awards: FruitRecord[]): Fruit[] {
+    const previousStock = { ...this.juiceStock };
     const result = applyJuiceAwards({
       juiceProgress: this.juiceProgress,
       juiceStock: this.juiceStock,
@@ -286,5 +337,15 @@ export class GameModel {
     });
     this.juiceProgress = result.juiceProgress;
     this.juiceStock = result.juiceStock;
+    const pressedJuices: Fruit[] = [];
+    for (const fruit of FRUITS) {
+      const completed = Math.max(0, result.juiceStock[fruit] - previousStock[fruit]);
+      for (let index = 0; index < completed; index += 1) {
+        pressedJuices.push(fruit);
+        this.queuedJuiceDrops.push(fruit);
+        this.juiceDropsCreated += 1;
+      }
+    }
+    return pressedJuices;
   }
 }
