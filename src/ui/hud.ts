@@ -1,7 +1,8 @@
 import fruitStripUrl from "../assets/sprites/lab/fruits-v2.png";
 import juiceStripUrl from "../assets/sprites/lab/juices-v2.png";
 import { DIFFICULTY_CONFIGS, FRUIT_COLORS, FRUIT_LABEL, FRUITS, GAME_MODE_CONFIGS, JUICE_EFFECT_LABEL } from "../core";
-import type { DifficultyId, Fruit, FruitRecord, GameModeId, GameSettings, GameState, JuiceOrder } from "../core";
+import type { AiSpeed, DifficultyId, Fruit, FruitRecord, GameModeId, GameSettings, GameState, JuiceOrder } from "../core";
+import type { AiRunnerState } from "../ai";
 import type { PlayerStats } from "../storage/stats";
 
 export type HudSnapshot = {
@@ -23,6 +24,7 @@ export type HudSnapshot = {
   soundEnabled: boolean;
   stats: PlayerStats;
   settings: GameSettings;
+  ai?: AiRunnerState;
   challenge: {
     label: string;
     progress: string;
@@ -39,8 +41,10 @@ type HudCallbacks = {
   onSoundToggle: () => void;
   onTogglePause: () => void;
   onToggleSettings: () => void;
+  onToggleAi: () => void;
   onDifficultyChange: (difficulty: DifficultyId) => void;
   onModeChange: (mode: GameModeId) => void;
+  onAiSpeedChange: (speed: AiSpeed) => void;
   onReducedMotionChange: (enabled: boolean) => void;
   onSfxVolumeChange: (volume: number) => void;
   onBgmVolumeChange: (volume: number) => void;
@@ -79,12 +83,14 @@ export class HudController {
   private readonly resumeButton = getElement<HTMLButtonElement>("#resumeButton");
   private readonly soundButton = getElement<HTMLButtonElement>("#soundButton");
   private readonly settingsButton = getElement<HTMLButtonElement>("#settingsButton");
+  private readonly aiToggleButton = getElement<HTMLButtonElement>("#aiToggleButton");
   private readonly pauseButton = getElement<HTMLButtonElement>("#pauseButton");
   private readonly touchPauseButton = getElement<HTMLButtonElement>("#touchPauseButton");
   private readonly settingsPanel = getElement<HTMLElement>("#settingsPanel");
   private readonly modeValue = getElement<HTMLElement>("#modeValue");
   private readonly challengeProgressValue = getElement<HTMLElement>("#challengeProgressValue");
   private readonly challengeResultValue = getElement<HTMLElement>("#challengeResultValue");
+  private readonly aiSpeedSelect = getElement<HTMLSelectElement>("#aiSpeedSelect");
   private readonly pressTank = getElement<HTMLElement>("#pressTank");
   private readonly pressLanes = new Map<Fruit, PressLaneElements>();
 
@@ -101,15 +107,18 @@ export class HudController {
     bindPress(this.resumeButton, callbacks.onTogglePause);
     bindPress(this.soundButton, callbacks.onSoundToggle);
     bindPress(this.settingsButton, callbacks.onToggleSettings);
+    bindPress(this.aiToggleButton, callbacks.onToggleAi);
     bindPress(this.pauseButton, callbacks.onTogglePause);
     this.difficultySelect.addEventListener("change", () => callbacks.onDifficultyChange(this.difficultySelect.value as DifficultyId));
     this.modeSelect.addEventListener("change", () => callbacks.onModeChange(this.modeSelect.value as GameModeId));
+    this.aiSpeedSelect.addEventListener("change", () => callbacks.onAiSpeedChange(this.aiSpeedSelect.value as AiSpeed));
     this.reducedMotionToggle.addEventListener("change", () => callbacks.onReducedMotionChange(this.reducedMotionToggle.checked));
     this.sfxVolumeInput.addEventListener("input", () => callbacks.onSfxVolumeChange(Number(this.sfxVolumeInput.value) / 100));
     this.bgmVolumeInput.addEventListener("input", () => callbacks.onBgmVolumeChange(Number(this.bgmVolumeInput.value) / 100));
   }
 
   update(snapshot: HudSnapshot): void {
+    const ai = snapshot.ai ?? { enabled: false, intervalMs: 120, pendingCommands: 0, lastReason: "AI standby" };
     const juiceThreshold = DIFFICULTY_CONFIGS[snapshot.settings.difficulty].juiceThreshold;
     this.scoreValue.textContent = snapshot.score.toLocaleString();
     this.scoreValue.dataset.scoreSize = getScoreSize(snapshot.score);
@@ -121,6 +130,7 @@ export class HudController {
     this.difficultySelect.title = getDifficultyTitle(snapshot.settings.difficulty);
     this.modeSelect.value = snapshot.settings.mode;
     this.modeSelect.title = GAME_MODE_CONFIGS[snapshot.settings.mode].description;
+    this.aiSpeedSelect.value = snapshot.settings.aiSpeed;
     this.reducedMotionToggle.checked = snapshot.settings.reducedMotion;
     this.sfxVolumeInput.value = String(Math.round(snapshot.settings.sfxVolume * 100));
     this.bgmVolumeInput.value = String(Math.round(snapshot.settings.bgmVolume * 100));
@@ -145,6 +155,9 @@ export class HudController {
     setButtonContent(this.soundButton, "♪", snapshot.soundEnabled ? "Sound on" : "Sound off");
     this.soundButton.title = snapshot.soundEnabled ? "Sound on" : "Sound off";
     this.soundButton.setAttribute("aria-pressed", String(snapshot.soundEnabled));
+    setButtonContent(this.aiToggleButton, "AI", ai.enabled ? "AI Playing" : "Auto Play");
+    this.aiToggleButton.title = ai.enabled ? `Auto Play on: ${ai.lastReason}` : "Start Auto Play";
+    this.aiToggleButton.setAttribute("aria-pressed", String(ai.enabled));
     this.settingsButton.title = this.settingsPanel.hidden ? "Settings" : "Close settings";
 
     for (const fruit of FRUITS) {

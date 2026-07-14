@@ -1,5 +1,5 @@
 import { sfxr } from "jsfxr";
-import type { Fruit, GameState, ProgressionStage } from "../core";
+import type { BgmMoment, Fruit, GameModeId, GameState, ProgressionStage } from "../core";
 import { BgmPreview } from "./bgmPreview";
 import { SFX_DEFINITIONS, type SfxKey } from "./sfxCatalog";
 
@@ -14,6 +14,8 @@ export class SoundEngine {
   private sfxBuffers: Partial<Record<SfxKey, AudioBuffer>> = {};
   private bgmPreview: BgmPreview | null = null;
   private bgmStage: ProgressionStage = 0;
+  private bgmMode: GameModeId = "normal";
+  private bgmMoment: BgmMoment = "flow";
 
   toggle(): void {
     this.enabled = !this.enabled;
@@ -48,6 +50,12 @@ export class SoundEngine {
   setBgmStage(stage: ProgressionStage): void {
     this.bgmStage = stage;
     this.bgmPreview?.setStage(stage);
+  }
+
+  setBgmContext(mode: GameModeId, moment: BgmMoment): void {
+    this.bgmMode = mode;
+    this.bgmMoment = moment;
+    this.bgmPreview?.setContext(mode, moment);
   }
 
   tick(): void {
@@ -155,6 +163,7 @@ export class SoundEngine {
     this.cacheSfxBuffers();
     this.bgmPreview ??= new BgmPreview(this.bgmVolume);
     this.bgmPreview.setStage(this.bgmStage);
+    this.bgmPreview.setContext(this.bgmMode, this.bgmMoment);
     this.applyVolumes();
   }
 

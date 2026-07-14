@@ -84,6 +84,7 @@ const soundCueHandlers: SoundCueHandlers = {
   shipment: (cue) => sound.shipment(cue.totalStock),
   fanfare: () => sound.fanfare(),
   gameOver: () => sound.gameOver(),
+  bgmContext: (cue) => sound.setBgmContext(cue.mode, cue.moment),
   bgmStage: (cue) => sound.setBgmStage(cue.stage),
 };
 
@@ -116,8 +117,10 @@ hud = new HudController({
   onSoundToggle: () => inputCommands.dispatch({ kind: "toggleSound" }),
   onTogglePause: () => inputCommands.dispatch({ kind: "togglePause" }),
   onToggleSettings: () => inputCommands.dispatch({ kind: "toggleSettings" }),
+  onToggleAi: toggleAutoPlay,
   onDifficultyChange: (difficulty) => inputCommands.dispatch({ kind: "setDifficulty", difficulty }),
   onModeChange: (mode) => inputCommands.dispatch({ kind: "setMode", mode }),
+  onAiSpeedChange: (speed) => inputCommands.dispatch({ kind: "setAiSpeed", speed }),
   onReducedMotionChange: (reducedMotion) => inputCommands.dispatch({ kind: "setReducedMotion", reducedMotion }),
   onSfxVolumeChange: (sfxVolume) => inputCommands.dispatch({ kind: "setSfxVolume", sfxVolume }),
   onBgmVolumeChange: (bgmVolume) => inputCommands.dispatch({ kind: "setBgmVolume", bgmVolume }),
@@ -174,6 +177,7 @@ function dispatch(result: GameSessionCommandResult): void {
   debugState.dispatches += 1;
   debugState.lastResult = result;
   try {
+    if (result.gameOverRecorded) aiRunner.setEnabled(false);
     for (const cue of result.sounds) {
       playSoundCue(cue);
     }
@@ -210,7 +214,7 @@ function playVisualEffect(cue: VisualEffectCue): void {
 }
 
 function updateHud(): void {
-  hud.update(session.getHudSnapshot());
+  hud.update({ ...session.getHudSnapshot(), ai: aiRunner.getState() });
 }
 
 function render(): void {
@@ -230,6 +234,14 @@ function startGame(): void {
   game.awardJuice({ apple: 0, orange: 0, lemon: 0, grape: 0, melon: 0, berry: 0, [fruit]: threshold });
   updateHud();
   render();
+}
+
+function toggleAutoPlay(): void {
+  const willEnable = !aiRunner.getState().enabled;
+  inputCommands.dispatch({ kind: "toggleAi" }, { unlockSound: willEnable });
+  if (!willEnable) return;
+  const state = session.getRenderSnapshot().state;
+  if (state === "ready" || state === "gameover") startGame();
 }
 
 function aiIntervalForSpeed(speed: AiSpeed): number {

@@ -288,7 +288,7 @@ h2 {
 }
 
 .title-actions {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   margin-top: 10px;
 }
 
@@ -334,6 +334,29 @@ h2 {
   background:
     radial-gradient(circle at 25% 12%, rgba(255, 255, 255, 0.24), transparent 28%),
     linear-gradient(180deg, #f5a93c, #c66f24 68%, #94501a);
+}
+
+.autoplay-button {
+  border-color: rgba(167, 226, 255, 0.52);
+  background:
+    radial-gradient(circle at 25% 12%, rgba(255, 255, 255, 0.28), transparent 28%),
+    linear-gradient(180deg, #4fc5d7, #28849d 68%, #1b5a73);
+}
+
+.autoplay-button[aria-pressed="true"] {
+  border-color: rgba(229, 255, 170, 0.72);
+  background:
+    radial-gradient(circle at 22% 10%, rgba(255, 255, 255, 0.44), transparent 30%),
+    linear-gradient(180deg, #bcf04b, #54b945 66%, #2d7839);
+  box-shadow:
+    inset 0 -4px 0 rgba(35, 74, 20, 0.3),
+    0 10px 20px rgba(31, 91, 43, 0.34),
+    0 0 22px rgba(172, 241, 76, 0.36);
+}
+
+.autoplay-button[aria-pressed="true"] .button-icon {
+  color: #27511f;
+  background: #f3ffd2;
 }
 
 .primary-button:active,
@@ -1238,7 +1261,7 @@ h2 {
 
   .title-actions {
     order: 2;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     margin-top: 0;
   }
 
@@ -1283,7 +1306,14 @@ h2 {
 
   .primary-button {
     min-height: 44px;
-    padding: 0 10px;
+    gap: 6px;
+    padding: 0 8px;
+    font-size: 0.86rem;
+  }
+
+  .primary-button .button-icon {
+    width: 21px;
+    height: 21px;
   }
 
   .touch-controls {

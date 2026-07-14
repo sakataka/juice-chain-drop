@@ -7,6 +7,7 @@ export type DifficultyId = "easy" | "normal" | "hard";
 export type GameModeId = "normal" | "scoreAttack" | "chainChallenge" | "waterCleanup";
 export type AiSpeed = "slow" | "normal" | "fast";
 export type ProgressionStage = 0 | 1 | 2 | 3;
+export type BgmMoment = "flow" | "pressReady" | "juiceDrop";
 
 export type RangeConfig = {
   min: number;

@@ -100,6 +100,7 @@ describe("GameCommandBus", () => {
     bus.dispatch({ kind: "setMode", mode: "scoreAttack" });
     bus.dispatch({ kind: "start" });
     game.juiceStock.apple = 2;
+    game.active = { kind: "juiceDrop", axis: { x: 2, y: 0, fruit: "apple" }, satellite: { fruit: "apple", rotation: 0 } };
 
     const snapshot = bus.createAiSnapshot();
 
@@ -109,6 +110,7 @@ describe("GameCommandBus", () => {
     expect(snapshot.settings).toMatchObject({ mode: "scoreAttack", difficulty: "normal" });
     expect(snapshot.challenge).toMatchObject({ mode: "scoreAttack", targetScore: 50_000, result: "Active" });
     expect(snapshot.juiceStock.apple).toBe(2);
+    expect(snapshot.active?.kind).toBe("juiceDrop");
   });
 });
 

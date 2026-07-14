@@ -41,6 +41,7 @@ test("opens settings and pauses with keyboard", async ({ page }) => {
   await expect(page.getByLabel("Difficulty")).toBeVisible();
   await page.getByLabel("Difficulty").selectOption("hard");
   await page.getByLabel("Mode").selectOption("chainChallenge");
+  await page.getByLabel("Auto Play Pace").selectOption("fast");
   await expect(page.getByLabel("Reduced Effects")).toBeVisible();
   await page.getByLabel("Reduced Effects").check({ force: true });
   await page.getByLabel("SFX Volume").fill("35");
@@ -59,6 +60,7 @@ test("persists settings and shows the active difficulty press threshold", async 
   await page.getByRole("button", { name: "Settings" }).click();
   await page.getByLabel("Difficulty").selectOption("hard");
   await page.getByLabel("Mode").selectOption("waterCleanup");
+  await page.getByLabel("Auto Play Pace").selectOption("slow");
   await page.getByLabel("SFX Volume").fill("35");
   await page.getByLabel("BGM Volume").fill("60");
 
@@ -67,6 +69,7 @@ test("persists settings and shows the active difficulty press threshold", async 
   await page.getByRole("button", { name: "Settings" }).click();
   await expect(page.getByLabel("Difficulty")).toHaveValue("hard");
   await expect(page.getByLabel("Mode")).toHaveValue("waterCleanup");
+  await expect(page.getByLabel("Auto Play Pace")).toHaveValue("slow");
   await expect(page.getByLabel("SFX Volume")).toHaveValue("35");
   await expect(page.getByLabel("BGM Volume")).toHaveValue("60");
   await expect(page.locator('.press-lane[data-fruit="apple"]')).toHaveAttribute("aria-valuemax", "5");
@@ -74,12 +77,25 @@ test("persists settings and shows the active difficulty press threshold", async 
   await expect(page.locator('.press-lane[data-fruit="apple"] .press-progress')).toHaveText("0/5");
 });
 
-test("keeps the core screen focused on Press Tank without shipping or AI controls", async ({ page }) => {
+test("keeps the core screen focused on Press Tank with a dedicated Auto Play control", async ({ page }) => {
   await page.goto("/");
   await expect(page.getByRole("heading", { name: "Press Tank" })).toBeVisible();
   await expect(page.locator(".press-lane")).toHaveCount(6);
   await expect(page.getByRole("heading", { name: "Shipping" })).toHaveCount(0);
-  await expect(page.getByRole("button", { name: /AI/ })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Auto Play" })).toBeVisible();
+});
+
+test("starts Auto Play in one action and returns control on manual input", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "Auto Play" }).click();
+
+  await expect(page.getByRole("button", { name: "AI Playing" })).toHaveAttribute("aria-pressed", "true");
+  await expect.poll(async () => (await page.evaluate(() => window.__juiceDebug?.() as any))?.render.state).toBe("playing");
+  await expect.poll(async () => (await page.evaluate(() => window.__juiceDebug?.() as any))?.ai.lastReason).not.toBe("AI standby");
+
+  await page.keyboard.press("ArrowLeft");
+  await expect(page.getByRole("button", { name: "Auto Play" })).toHaveAttribute("aria-pressed", "false");
+  await expect.poll(async () => (await page.evaluate(() => window.__juiceDebug?.() as any))?.ai.enabled).toBe(false);
 });
 
 test("puts a completed bottle into Next and bursts it on landing", async ({ page }) => {
@@ -133,7 +149,7 @@ test("keeps mobile start and touch controls in the first viewport", async ({ pag
   test.skip(!viewport || viewport.width > 480, "mobile viewport only");
 
   const controlBoxes = await page.evaluate(() => {
-    const ids = ["startButton", "gameCanvas", "touchLeftButton", "touchRotateButton", "touchRightButton", "touchSoftDropButton", "touchHardDropButton", "touchPauseButton"];
+    const ids = ["startButton", "aiToggleButton", "gameCanvas", "touchLeftButton", "touchRotateButton", "touchRightButton", "touchSoftDropButton", "touchHardDropButton", "touchPauseButton"];
     return ids.map((id) => {
       const rect = document.getElementById(id)?.getBoundingClientRect();
       return rect ? { id, top: rect.top, bottom: rect.bottom, left: rect.left, right: rect.right } : null;

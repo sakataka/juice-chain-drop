@@ -1,5 +1,5 @@
-export const BGM_BPM = 112;
-export const BGM_STAGE_BPMS = [112, 120, 128, 136] as const;
+export const BGM_BPM = 106;
+export const BGM_STAGE_BPMS = [106, 114, 122, 130] as const;
 export const BGM_LOOP_BARS = 24;
 export const BGM_TICKS_PER_BEAT = 480;
 const BGM_BEATS_PER_BAR = 4;
@@ -75,9 +75,20 @@ const BASS_PATTERNS = [
   ["C2", "G2", "C3", "E3"],
 ];
 
+const JUICE_CHORDS = ["C", "A", "F", "G", "C", "A", "F", "G", "C", "D", "A", "G", "C", "A", "F", "G", "F", "G", "A", "E", "D", "F", "G", "C"] as const;
+const JUICE_ARPEGGIOS: Record<(typeof JUICE_CHORDS)[number], string[]> = {
+  C: ["E6", "G6", "C7", "G6"],
+  A: ["E6", "A6", "C7", "A6"],
+  F: ["F6", "A6", "C7", "A6"],
+  G: ["G6", "B6", "D7", "B6"],
+  D: ["F6", "A6", "D7", "A6"],
+  E: ["G6", "B6", "E7", "B6"],
+};
+
 export const BGM_MELODY: BgmNote[] = MELODY_PHRASES.flatMap((pitches, bar) => melodyBar(bar, pitches));
 export const BGM_BASS: BgmNote[] = bassBars(BASS_PATTERNS);
 export const BGM_DRUMS: BgmDrumHit[] = drumLoop();
+export const BGM_JUICE: BgmNote[] = JUICE_CHORDS.flatMap((chord, bar) => juiceBar(bar, JUICE_ARPEGGIOS[chord]));
 
 function beat(bar: number, offset: number): number {
   return bar * BGM_BEATS_PER_BAR + offset;
@@ -103,6 +114,15 @@ function bassBars(patterns: string[][]): BgmNote[] {
       ];
     }),
   );
+}
+
+function juiceBar(bar: number, pitches: string[]): BgmNote[] {
+  return pitches.map((pitch, index) => ({
+    beat: beat(bar, 0.75 + index * 0.75),
+    pitch,
+    duration: 0.25,
+    velocity: index === 2 ? 0.54 : 0.42,
+  }));
 }
 
 function drumLoop(): BgmDrumHit[] {

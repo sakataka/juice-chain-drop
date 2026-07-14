@@ -33,6 +33,7 @@ describe("GameSession", () => {
     const hardDrop = session.hardDrop();
 
     expect(start.effects).toContainEqual({ kind: "clearEffects" });
+    expect(start.sounds).toContainEqual({ kind: "bgmContext", mode: "normal", moment: "flow" });
     expect(move.sounds).toContainEqual({ kind: "tick" });
     expect(rotate.sounds).toContainEqual({ kind: "pop" });
     expect(hardDrop.sounds.map((cue) => cue.kind)).toContain("tap");
@@ -44,12 +45,14 @@ describe("GameSession", () => {
     session.start();
     game.awardJuice({ apple: 4, orange: 0, lemon: 0, grape: 0, melon: 0, berry: 0 });
 
-    session.hardDrop();
+    const bottleReady = session.hardDrop();
     expect(session.getRenderSnapshot().active?.kind).toBe("juiceDrop");
+    expect(bottleReady.sounds).toContainEqual({ kind: "bgmContext", mode: "normal", moment: "juiceDrop" });
     const result = session.hardDrop();
 
     expect(result.sounds).toContainEqual({ kind: "pour" });
     expect(result.effects.some((effect) => effect.kind === "juiceSplash" && effect.primary === "apple")).toBe(true);
+    expect(result.sounds).toContainEqual({ kind: "bgmContext", mode: "normal", moment: "flow" });
     expect(session.getHudSnapshot().juiceDropsCreated).toBe(1);
   });
 
@@ -98,9 +101,10 @@ describe("GameSession", () => {
     const { session } = createSession({ settings: { ...settings, mode: "scoreAttack" } });
     session.start();
 
-    session.setMode("chainChallenge");
+    const result = session.setMode("chainChallenge");
 
     expect(session.getHudSnapshot().challenge.result).toBe("Ready");
+    expect(result.sounds).toContainEqual({ kind: "bgmContext", mode: "chainChallenge", moment: "flow" });
   });
 
   it("keeps completed juice for Juice Drop instead of auto-shipping it", () => {

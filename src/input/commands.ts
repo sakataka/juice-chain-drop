@@ -120,7 +120,7 @@ export class GameCommandBus {
     const hud = this.options.session.getHudSnapshot();
     return {
       board: render.board.map((row) => [...row]),
-      active: render.active ? { axis: { ...render.active.axis }, satellite: { ...render.active.satellite } } : null,
+      active: render.active ? { kind: render.active.kind, axis: { ...render.active.axis }, satellite: { ...render.active.satellite } } : null,
       nextQueue: render.nextQueue.map((pair) => [pair[0], pair[1]]),
       state: render.state,
       score: hud.score,

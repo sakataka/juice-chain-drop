@@ -1,7 +1,7 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import MidiWriter from "midi-writer-js";
-import { BGM_BASS, BGM_BPM, BGM_DRUMS, BGM_MELODY, BGM_TICKS_PER_BEAT, type BeatDuration, type BgmDrumHit, type BgmNote } from "../src/audio/bgmComposition";
+import { BGM_BASS, BGM_BPM, BGM_DRUMS, BGM_JUICE, BGM_MELODY, BGM_TICKS_PER_BEAT, type BeatDuration, type BgmDrumHit, type BgmNote } from "../src/audio/bgmComposition";
 
 const OUTPUT_PATH = resolve("output/bgm-main.mid");
 
@@ -13,11 +13,14 @@ for (const note of BGM_MELODY) addNote(melody, note, 1);
 const bass = createTrack("bass", 2, 38);
 for (const note of BGM_BASS) addNote(bass, note, 2);
 
+const juice = createTrack("juice accent", 3, 9);
+for (const note of BGM_JUICE) addNote(juice, note, 3);
+
 const drums = new MidiWriter.Track();
 drums.addTrackName("drums");
 for (const hit of BGM_DRUMS) addDrum(drums, hit);
 
-const writer = new MidiWriter.Writer([melody, bass, drums], { ticksPerBeat: BGM_TICKS_PER_BEAT });
+const writer = new MidiWriter.Writer([melody, bass, juice, drums], { ticksPerBeat: BGM_TICKS_PER_BEAT });
 mkdirSync(dirname(OUTPUT_PATH), { recursive: true });
 writeFileSync(OUTPUT_PATH, writer.buildFile());
 console.log(`Generated ${OUTPUT_PATH}`);

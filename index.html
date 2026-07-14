@@ -38,6 +38,7 @@
         <div class="title-actions">
           <button id="startButton" class="primary-button" type="button"><span class="button-icon" aria-hidden="true">▶</span><span class="button-label">Start</span></button>
           <button id="pauseButton" class="primary-button secondary-button" type="button" disabled><span class="button-icon" aria-hidden="true">Ⅱ</span><span class="button-label">Pause</span></button>
+          <button id="aiToggleButton" class="primary-button autoplay-button" type="button" aria-pressed="false"><span class="button-icon" aria-hidden="true">AI</span><span class="button-label">Auto Play</span></button>
         </div>
         <div class="touch-controls" aria-label="touch controls">
           <button id="touchLeftButton" type="button" aria-label="Move left">←</button>
@@ -110,6 +111,14 @@
               <option value="scoreAttack">Score Attack</option>
               <option value="chainChallenge">Chain Challenge</option>
               <option value="waterCleanup">Water Cleanup</option>
+            </select>
+          </label>
+          <label class="field-row" for="aiSpeedSelect">
+            <span>Auto Play Pace</span>
+            <select id="aiSpeedSelect">
+              <option value="slow">Calm</option>
+              <option value="normal">Flow</option>
+              <option value="fast">Rush</option>
             </select>
           </label>
           <label class="field-row checkbox-row" for="reducedMotionToggle">

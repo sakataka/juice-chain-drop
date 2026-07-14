@@ -1,5 +1,5 @@
 import { GAME_MODE_CONFIGS, PROGRESSION_DROP_INTERVAL_MULTIPLIERS, getChallengeSnapshot, getDifficultyConfig, updateChallenge } from "../core";
-import type { ChallengeRuntimeState, ChallengeResult, DifficultyId, Fruit, GameModeId, GameSettings, GridPosition, JuiceEffectResult, ProgressionStage, ResolveReport, ShipmentReport } from "../core";
+import type { BgmMoment, ChallengeRuntimeState, ChallengeResult, DifficultyId, Fruit, GameModeId, GameSettings, GridPosition, JuiceEffectResult, ProgressionStage, ResolveReport, ShipmentReport } from "../core";
 import { createChallengeState } from "../core";
 import { completePlayerStats } from "../storage/stats";
 import type { PlayerStats } from "../storage/stats";
@@ -20,6 +20,7 @@ export type SoundCue =
   | { kind: "shipment"; totalStock: number }
   | { kind: "fanfare" }
   | { kind: "gameOver" }
+  | { kind: "bgmContext"; mode: GameModeId; moment: BgmMoment }
   | { kind: "bgmStage"; stage: ProgressionStage };
 
 export type VisualEffectCue =
@@ -62,6 +63,7 @@ export class GameSession {
   private shipmentTimer = 0;
   private elapsedPlayingMs = 0;
   private bgmStage: ProgressionStage = 0;
+  private lastBgmContext = "";
   private gameOverRecorded = false;
   private challenge: ChallengeRuntimeState;
   private settings: GameSettings;
@@ -81,7 +83,9 @@ export class GameSession {
     this.shipmentTimer = 0;
     this.elapsedPlayingMs = 0;
     this.bgmStage = 0;
+    this.lastBgmContext = "";
     const result = createResult({ sounds: [{ kind: "bgmStage", stage: 0 }], effects: [{ kind: "clearEffects" }], shouldRender: true, shouldUpdateHud: true });
+    this.syncBgmContext(result);
     if (this.settings.mode === "waterCleanup") {
       const cells = this.game.dropStartingWater(GAME_MODE_CONFIGS.waterCleanup.initialWaterCount ?? 0);
       for (const cell of cells) {
@@ -201,7 +205,10 @@ export class GameSession {
     this.settings = { ...this.settings, mode };
     this.options.saveSettings(this.settings);
     this.resetChallenge();
-    return createResult({ shouldUpdateHud: true });
+    this.lastBgmContext = "";
+    const result = createResult({ shouldUpdateHud: true });
+    this.syncBgmContext(result);
+    return result;
   }
 
   setAiSpeed(aiSpeed: AiSpeed): GameSessionCommandResult {
@@ -337,6 +344,7 @@ export class GameSession {
     if (report.chain >= 2) {
       result.sounds.push({ kind: "sparkle", chain: report.chain });
     }
+    this.syncBgmContext(result);
     this.syncWaterCleanupProgress(result);
     this.advanceChallenge(0, result);
   }
@@ -392,6 +400,14 @@ export class GameSession {
 
   private getProgressedDropInterval(intervalMs: number): number {
     return Math.round(intervalMs * PROGRESSION_DROP_INTERVAL_MULTIPLIERS[this.bgmStage]);
+  }
+
+  private syncBgmContext(result: GameSessionCommandResult): void {
+    const moment: BgmMoment = this.game.active?.kind === "juiceDrop" ? "juiceDrop" : this.game.queuedJuiceDrops.length > 0 ? "pressReady" : "flow";
+    const key = `${this.settings.mode}:${moment}`;
+    if (key === this.lastBgmContext) return;
+    this.lastBgmContext = key;
+    result.sounds.push({ kind: "bgmContext", mode: this.settings.mode, moment });
   }
 
   private getShipmentRemainingMs(): number {

@@ -116,7 +116,7 @@ npx hyperframes render --output output/fruit-puzzle-promo.mp4 --quality standard
 構成:
 
 - 0.0-2.65 秒: タイトルと新UIの開始画面
-- 2.35-5.4 秒: 実プレイ開始と Next Drop / Press Tank の見え方
+- 2.35-5.4 秒: Auto PlayでAIの連鎖を眺める体験と、局面に応じて変化するBGM
 - 5.15-9.0 秒: 連鎖でボトルが完成し、Next Dropへ入る流れ
 - 8.65-12.4 秒: ボトルを盤面へ落として着弾効果を狙うJuice Drop
 - 12.15-15.2 秒: 締め
@@ -132,7 +132,7 @@ npx hyperframes render --output output/fruit-puzzle-promo.mp4 --quality standard
 
 ## ナレーション原稿案
 
-フルーツを落として、つなげて、ジュースを作ろう。完成したボトルは次の落下ピース。狙った場所へ落として果汁を弾けさせ、さらに連鎖をつなぐフルーツ落ち物パズル。
+フルーツを落として、つなげて、ジュースを作ろう。Auto PlayならAIが生む連鎖を眺めながら、局面で変わるBGMと果汁のリズムを楽しめる。完成したボトルを狙った場所へ落として果汁を弾けさせ、さらに連鎖をつなぐフルーツ落ち物パズル。
 
 ## README 用紹介文
 
@@ -172,5 +172,5 @@ https://github.com/user-attachments/assets/your-uploaded-video-id
 
 - 9:16 縦長ショート版を `video/shorts/` や別 composition として追加する
 - ゲームプレイを静止画ではなく短い画面録画素材に差し替える
-- BGM / SE / 日本語ナレーションを追加する
+- ゲーム本体のアダプティブBGMを動画用ミックスにして追加する
 - `index.html` を `compositions/` 配下の scene ごとに分割して lint 警告を解消する

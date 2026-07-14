@@ -44,12 +44,24 @@ export type ResolveSummary = {
 };
 
 const ROTATION_COUNT = 4;
+const FALLBACK_DIFFICULTY: DifficultyConfig = {
+  id: "normal",
+  label: "Normal",
+  dropInterval: 0,
+  slowDropInterval: 0,
+  scoreMultiplier: 1,
+  juiceThreshold: 4,
+  waterIntervalMs: { min: 0, max: 0 },
+  waterBurst: { min: 1, max: 1 },
+  progressionStageDurationMs: 60_000,
+};
 
 export { cloneBoard, cloneFruitRecord };
 
 export function enumeratePlacements(board: Board, active: PairPiece, difficulty?: DifficultyConfig): PlacementCandidate[] {
   const candidates: PlacementCandidate[] = [];
-  for (let rotations = 0; rotations < ROTATION_COUNT; rotations += 1) {
+  const rotationCount = active.kind === "juiceDrop" ? 1 : ROTATION_COUNT;
+  for (let rotations = 0; rotations < rotationCount; rotations += 1) {
     const rotated = withRotation(active, rotations);
     for (let x = -1; x <= COLS; x += 1) {
       const piece = { ...rotated, axis: { ...rotated.axis, x } };
@@ -111,6 +123,19 @@ export function clonePair(pair: FruitPair): FruitPair {
 
 function settleOnClone(board: Board, piece: PairPiece, difficulty?: DifficultyConfig): ResolveSummary {
   const copy = cloneBoard(board);
+  if (piece.kind === "juiceDrop") {
+    const effectiveDifficulty = difficulty ?? FALLBACK_DIFFICULTY;
+    const juice = applyJuiceEffectRules(copy, {
+      primary: piece.axis.fruit,
+      center: getJuiceEffectCenter(piece),
+      activeAxisFruit: piece.axis.fruit,
+    });
+    const resolved = resolveBoardRules(juice.board, { difficulty: effectiveDifficulty });
+    return {
+      ...resolved,
+      clearScore: resolved.clearScore + calculateJuiceEffectBonus(piece.axis.fruit, juice.effect.cells.length, effectiveDifficulty),
+    };
+  }
   for (const cell of getPieceCells(piece)) {
     copy[cell.y][cell.x] = cell.fruit;
   }
@@ -120,6 +145,7 @@ function settleOnClone(board: Board, piece: PairPiece, difficulty?: DifficultyCo
 
 function withRotation(piece: PairPiece, rotation: number): PairPiece {
   return {
+    kind: piece.kind,
     axis: { ...piece.axis },
     satellite: { ...piece.satellite, rotation },
   };
@@ -145,17 +171,5 @@ function commandsFor(active: PairPiece, rotations: number, targetX: number): AiC
 }
 
 function resolveBoardWithoutDifficulty(board: Board): ResolveSummary {
-  return resolveBoardRules(board, {
-    difficulty: {
-      id: "normal",
-      label: "Normal",
-      dropInterval: 0,
-      slowDropInterval: 0,
-      scoreMultiplier: 1,
-      juiceThreshold: 4,
-      waterIntervalMs: { min: 0, max: 0 },
-      waterBurst: { min: 1, max: 1 },
-      progressionStageDurationMs: 60_000,
-    },
-  });
+  return resolveBoardRules(board, { difficulty: FALLBACK_DIFFICULTY });
 }

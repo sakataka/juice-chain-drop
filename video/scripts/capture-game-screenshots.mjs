@@ -28,9 +28,14 @@ await page.reload({ waitUntil: "networkidle" });
 await page.waitForSelector("#gameCanvas");
 await save("title.png");
 
-await page.getByRole("button", { name: "Start" }).click();
+await page.getByRole("button", { name: "Auto Play" }).click();
 await page.waitForTimeout(700);
 await save("gameplay-start.png");
+
+await page.reload({ waitUntil: "networkidle" });
+await page.waitForSelector("#gameCanvas");
+await page.getByRole("button", { name: "Start" }).click();
+await page.waitForTimeout(700);
 await save("gameplay-combo.png");
 
 await page.keyboard.press("Space");

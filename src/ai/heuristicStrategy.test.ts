@@ -55,16 +55,31 @@ describe("heuristic AI strategy", () => {
     expect(decision.reason).toBe("No legal AI placement");
   });
 
-  it("uses juice when the board is in immediate danger", () => {
+  it("places Juice Drops without rotation or legacy instant-use commands", () => {
     const game = fixedGame();
     game.start();
-    game.board = filledBoard("grape");
-    game.board[11][2] = null;
-    game.juiceStock.orange = 1;
+    game.active = { kind: "juiceDrop", axis: { x: 2, y: 0, fruit: "apple" }, satellite: { fruit: "apple", rotation: 0 } };
+    game.board = boardFromRows([
+      "......",
+      "......",
+      "......",
+      "......",
+      "......",
+      "......",
+      "......",
+      "......",
+      "......",
+      "......",
+      "aa....",
+      "ooo...",
+    ]);
 
     const decision = heuristicAiStrategy.choose(createSnapshot(game));
 
-    expect(decision.commands[0]).toEqual({ kind: "useJuice", fruit: "orange" });
+    expect(decision.reason).toContain("Juice Drop apple");
+    expect(decision.commands.at(-1)).toEqual({ kind: "hardDrop" });
+    expect(decision.commands.every((command) => command.kind !== "rotate" && command.kind !== "useJuice")).toBe(true);
+    expect(enumeratePlacements(game.board, game.active, game.difficulty)).toHaveLength(6);
   });
 
   it("uses next queue lookahead to prepare a future clear instead of only taking the current move", () => {
@@ -94,7 +109,7 @@ describe("heuristic AI strategy", () => {
     expect(withLookahead.commands).not.toEqual(immediateBest.commands);
   });
 
-  it("holds juice near shipment when the board is safe", () => {
+  it("does not spend queued bottles as legacy instant-use juice", () => {
     const game = fixedGame();
     game.start();
     game.juiceStock.apple = 1;
@@ -113,11 +128,7 @@ describe("heuristic AI strategy", () => {
       ".oo...",
     ]);
 
-    const decision = heuristicAiStrategy.choose(
-      createSnapshot(game, {
-        shipment: { enabled: true, intervalSeconds: 45, remainingMs: 2_000, previewScore: 160 },
-      }),
-    );
+    const decision = heuristicAiStrategy.choose(createSnapshot(game));
 
     expect(decision.commands[0]?.kind).not.toBe("useJuice");
   });
@@ -199,10 +210,10 @@ describe("heuristic AI strategy", () => {
     expect(cleanup.score).toBeGreaterThan(normal.score);
   });
 
-  it("uses juice aggressively in water cleanup instead of holding it for shipment", () => {
+  it("aims a Juice Drop normally during water cleanup", () => {
     const game = fixedGame(["apple", "orange"]);
     game.start();
-    game.active = { axis: { x: 2, y: 8, fruit: "apple" }, satellite: { fruit: "orange", rotation: 0 } };
+    game.active = { kind: "juiceDrop", axis: { x: 2, y: 0, fruit: "apple" }, satellite: { fruit: "apple", rotation: 0 } };
     game.board = boardFromRows([
       "......",
       "......",
@@ -217,17 +228,11 @@ describe("heuristic AI strategy", () => {
       "......",
       "......",
     ]);
-    game.juiceStock.apple = 1;
+    const decision = heuristicAiStrategy.choose(createSnapshot(game, { mode: "waterCleanup", runWaterClears: 25 }));
 
-    const decision = heuristicAiStrategy.choose(
-      createSnapshot(game, {
-        mode: "waterCleanup",
-        runWaterClears: 25,
-        shipment: { enabled: true, intervalSeconds: 45, remainingMs: 2_000, previewScore: 160 },
-      }),
-    );
-
-    expect(decision.commands[0]).toEqual({ kind: "useJuice", fruit: "apple" });
+    expect(decision.reason).toContain("Juice Drop apple");
+    expect(decision.commands.at(-1)).toEqual({ kind: "hardDrop" });
+    expect(decision.commands.some((command) => command.kind === "useJuice")).toBe(false);
   });
 
   it("keeps simulation inputs immutable", () => {
@@ -398,7 +403,7 @@ function createSnapshot(
       mode,
       elapsedMs: 0,
       remainingMs: mode === "chainChallenge" ? 60_000 : undefined,
-      targetScore: mode === "scoreAttack" ? 1_000_000 : undefined,
+      targetScore: mode === "scoreAttack" ? 50_000 : undefined,
       targetWaterClears: overrides.targetWaterClears ?? (mode === "waterCleanup" ? 30 : undefined),
       runBestChain: overrides.runBestChain ?? 0,
       runWaterClears: overrides.runWaterClears ?? 0,
