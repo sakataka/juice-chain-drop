@@ -170,3 +170,41 @@ test("keeps mobile start and touch controls in the first viewport", async ({ pag
   const hasHorizontalOverflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1);
   expect(hasHorizontalOverflow).toBe(false);
 });
+
+test("shows keyboard focus and honors dark and reduced-motion preferences", async ({ page }) => {
+  await page.emulateMedia({ colorScheme: "dark", reducedMotion: "reduce" });
+  await page.goto("/");
+
+  await page.keyboard.press("Tab");
+  const startButton = page.getByRole("button", { name: "Start" });
+  await expect(startButton).toBeFocused();
+
+  const preferenceStyles = await page.evaluate(() => {
+    const button = document.querySelector<HTMLElement>("#startButton");
+    const scoreValue = document.querySelector<HTMLElement>("#scoreValue");
+    if (!button || !scoreValue) throw new Error("Expected UI elements were not rendered.");
+    const buttonStyle = getComputedStyle(button);
+    const scoreStyle = getComputedStyle(scoreValue);
+    return {
+      darkMode: matchMedia("(prefers-color-scheme: dark)").matches,
+      reducedMotion: matchMedia("(prefers-reduced-motion: reduce)").matches,
+      colorScheme: getComputedStyle(document.documentElement).colorScheme,
+      focusOutline: buttonStyle.outlineStyle,
+      focusOutlineWidth: Number.parseFloat(buttonStyle.outlineWidth),
+      scoreColor: scoreStyle.color,
+    };
+  });
+
+  expect(preferenceStyles).toMatchObject({
+    darkMode: true,
+    reducedMotion: true,
+    colorScheme: "dark",
+    focusOutline: "solid",
+    scoreColor: "rgb(255, 192, 100)",
+  });
+  expect(preferenceStyles.focusOutlineWidth).toBeGreaterThanOrEqual(3);
+
+  await page.getByRole("button", { name: "Settings" }).click();
+  const panelAnimationDuration = await page.locator("#settingsPanel").evaluate((panel) => Number.parseFloat(getComputedStyle(panel).animationDuration));
+  expect(panelAnimationDuration).toBeLessThan(0.01);
+});

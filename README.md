@@ -4,10 +4,6 @@
 
 公開URL: https://sakataka.github.io/juice-chain-drop/
 
-## 紹介動画
-
-![Juice Chain Drop 紹介動画](video/output/fruit-puzzle-promo.gif)
-
 ## ゲーム概要
 
 `Juice Chain Drop` は、2つ1組で落ちてくる果物を並べ、同じ果物を4個以上つなげて消すパズルゲームです。消した果物でジュースボトルが完成すると、そのボトル自身が `Next Drop` に入り、1マスの落下ピースとして盤面へ戻ってきます。

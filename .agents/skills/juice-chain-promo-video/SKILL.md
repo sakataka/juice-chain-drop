@@ -16,7 +16,7 @@ Use this skill to keep the repository's short promo video aligned with the curre
 - Design guide: `video/DESIGN.md`
 - Screenshot assets: `video/assets/screenshots/`
 - Output MP4: `video/output/fruit-puzzle-promo.mp4` (local generated artifact, ignored by Git)
-- README GIF preview: `video/output/fruit-puzzle-promo.gif` (tracked for README preview)
+- Local GIF preview: `video/output/fruit-puzzle-promo.gif` (local generated artifact, ignored by Git)
 
 ## Workflow
 
@@ -46,26 +46,16 @@ bun run build
 bun run test
 ```
 
-6. If the video is meant for GitHub README, embed `video/output/fruit-puzzle-promo.gif` as the visible preview. Treat `video/output/fruit-puzzle-promo.mp4` as a local generated artifact only; do not stage or link it unless the user explicitly asks for an MP4 artifact.
+6. Treat screenshots, MP4, and GIF files as local generated artifacts. Do not stage or embed them in GitHub-facing documentation.
 
 ## Accepted warning
 
 `composition_file_too_large` is intentionally ignored for the current one-file promo composition. Use `bun run lint:raw` only when you need to inspect the original HyperFrames output.
 
-## GitHub README video guidance
-
-Reliable README pattern:
-
-```md
-![Juice Chain Drop promo](video/output/fruit-puzzle-promo.gif)
-```
-
-GitHub README rendering is most reliable with images/GIFs. Repository-relative MP4 links often open repository file views instead of playing inline.
-
 ## Completion checklist
 
 - `video/output/fruit-puzzle-promo.mp4` was rendered locally and is about 15 seconds unless otherwise requested, but remains ignored by Git.
-- `video/output/fruit-puzzle-promo.gif` exists for README inline preview.
+- `video/output/fruit-puzzle-promo.gif` exists for local preview when generation was requested, but remains ignored by Git.
 - `bun run lint` in `video/` reports zero warnings after filtering.
 - `bun run inspect` in `video/` reports zero layout issues.
 - `bun run build` and `bun run test` pass at repository root.
