@@ -90,6 +90,41 @@ describe("AiRunner", () => {
     expect(result?.sounds.some((cue) => cue.kind === "tap")).toBe(true);
     expect(runner.getState().lastReason).toBe("AI unstuck hard drop");
   });
+
+  it("discards queued commands and replans when the game mode changes", () => {
+    const { session } = createSession();
+    session.start();
+    const plannedModes: string[] = [];
+    const strategy: AiStrategy = {
+      id: "mode-aware-script",
+      choose: (snapshot) => {
+        plannedModes.push(snapshot.settings.mode);
+        return {
+          commands: snapshot.settings.mode === "normal" ? [{ kind: "move", dx: -1 }, { kind: "move", dx: -1 }] : [{ kind: "hardDrop" }],
+          score: 1,
+          reason: snapshot.settings.mode,
+          evaluatedMoves: 1,
+          mode: snapshot.settings.mode,
+          phase: snapshot.settings.mode === "chainChallenge" ? "chainBuild" : "balanced",
+        };
+      },
+    };
+    const runner = new AiRunner({
+      getSnapshot: () => createAiSnapshot(session),
+      executeCommand: (command) => executeAiCommand(session, command),
+      strategy,
+    });
+    runner.setEnabled(true);
+    runner.setIntervalMs(40);
+
+    expect(runner.tick(40)?.sounds).toContainEqual({ kind: "tick" });
+    session.setMode("chainChallenge");
+    const result = runner.tick(40);
+
+    expect(result?.sounds).toContainEqual({ kind: "tap" });
+    expect(plannedModes).toEqual(["normal", "chainChallenge"]);
+    expect(runner.getState()).toMatchObject({ mode: "chainChallenge", phase: "chainBuild" });
+  });
 });
 
 function createSession(): { session: GameSession; game: GameModel } {
@@ -108,7 +143,7 @@ function createSession(): { session: GameSession; game: GameModel } {
 function scriptedStrategy(commands: AiCommand[]): AiStrategy {
   return {
     id: "scripted",
-    choose: () => ({ commands, score: 1, reason: "scripted", evaluatedMoves: 1 }),
+    choose: (snapshot) => ({ commands, score: 1, reason: "scripted", evaluatedMoves: 1, mode: snapshot.settings.mode, phase: "balanced" }),
   };
 }
 
@@ -118,7 +153,9 @@ function createAiSnapshot(session: GameSession): AiGameSnapshot {
     return {
       board: render.board.map((row) => [...row]),
       active: render.active ? { kind: render.active.kind, axis: { ...render.active.axis }, satellite: { ...render.active.satellite } } : null,
-      nextQueue: render.nextQueue.map((pair) => [pair[0], pair[1]]),
+      nextPreviews: render.nextPreviews.map((preview) =>
+        preview.kind === "juiceDrop" ? { kind: "juiceDrop", fruit: preview.fruit } : { kind: "fruitPair", pair: [preview.pair[0], preview.pair[1]] },
+      ),
       state: render.state,
       score: hud.score,
       lastChain: hud.lastChain,

@@ -48,6 +48,12 @@ export class AiRunner {
     }
     if (render.state !== "playing" || !render.active) return null;
 
+    if (this.lastDecision && this.lastDecision.mode !== render.settings.mode) {
+      this.queue = [];
+      this.lastDecision = null;
+      this.stalledCommands = 0;
+    }
+
     this.elapsedMs += deltaMs;
     if (this.elapsedMs < this.intervalMs) return null;
     this.elapsedMs = 0;
@@ -74,6 +80,8 @@ export class AiRunner {
         score: -1,
         reason: "AI unstuck hard drop",
         evaluatedMoves: 0,
+        mode: render.settings.mode,
+        phase: "survive",
       };
       return this.options.executeCommand({ kind: "hardDrop" });
     }
@@ -86,6 +94,8 @@ export class AiRunner {
       intervalMs: this.intervalMs,
       pendingCommands: this.queue.length,
       lastReason: this.lastDecision?.reason ?? "AI standby",
+      mode: this.lastDecision?.mode ?? null,
+      phase: this.lastDecision?.phase ?? null,
     };
   }
 

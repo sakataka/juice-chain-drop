@@ -121,7 +121,9 @@ export class GameCommandBus {
     return {
       board: render.board.map((row) => [...row]),
       active: render.active ? { kind: render.active.kind, axis: { ...render.active.axis }, satellite: { ...render.active.satellite } } : null,
-      nextQueue: render.nextQueue.map((pair) => [pair[0], pair[1]]),
+      nextPreviews: render.nextPreviews.map((preview) =>
+        preview.kind === "juiceDrop" ? { kind: "juiceDrop", fruit: preview.fruit } : { kind: "fruitPair", pair: [preview.pair[0], preview.pair[1]] },
+      ),
       state: render.state,
       score: hud.score,
       lastChain: hud.lastChain,

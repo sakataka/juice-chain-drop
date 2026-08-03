@@ -95,7 +95,7 @@ describe("GameCommandBus", () => {
     expect(updateHud).not.toHaveBeenCalled();
   });
 
-  it("builds AI snapshots with next queue, shipment, and typed mode context", () => {
+  it("builds AI snapshots with visible next previews, shipment, and typed mode context", () => {
     const { bus, session, game } = createBus();
     bus.dispatch({ kind: "setMode", mode: "scoreAttack" });
     bus.dispatch({ kind: "start" });
@@ -104,8 +104,9 @@ describe("GameCommandBus", () => {
 
     const snapshot = bus.createAiSnapshot();
 
-    expect(snapshot.nextQueue).toEqual(session.getRenderSnapshot().nextQueue);
-    expect(snapshot.nextQueue).not.toBe(session.getRenderSnapshot().nextQueue);
+    expect(snapshot.nextPreviews).toEqual(session.getRenderSnapshot().nextPreviews);
+    expect(snapshot.nextPreviews).not.toBe(session.getRenderSnapshot().nextPreviews);
+    expect(snapshot.nextPreviews[0]).not.toBe(session.getRenderSnapshot().nextPreviews[0]);
     expect(snapshot.shipment).toMatchObject({ enabled: true, intervalSeconds: 45 });
     expect(snapshot.settings).toMatchObject({ mode: "scoreAttack", difficulty: "normal" });
     expect(snapshot.challenge).toMatchObject({ mode: "scoreAttack", targetScore: 50_000, result: "Active" });
@@ -147,7 +148,7 @@ function createBus(): {
     setEnabled: vi.fn(),
     toggle: vi.fn(() => true),
     setIntervalMs: vi.fn(),
-    getState: () => ({ enabled: false, intervalMs: 120, pendingCommands: 0, lastReason: "test" }),
+    getState: () => ({ enabled: false, intervalMs: 120, pendingCommands: 0, lastReason: "test", mode: null, phase: null }),
   };
   const sound = {
     toggle: vi.fn(),

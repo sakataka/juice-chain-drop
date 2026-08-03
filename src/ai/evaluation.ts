@@ -1,10 +1,12 @@
-import { applyJuiceAwards, calculateShipmentScore, COLS, FRUITS, getChainScoreMultiplier, getDifficultyConfig, ROWS, isFruitCell, isWaterCell } from "../core";
-import type { Board, Fruit, FruitRecord } from "../core";
+import { applyJuiceAwards, calculateShipmentScore, COLS, FRUITS, getChainScoreMultiplier, getDifficultyConfig, ROWS, isFruitCell, isWaterCell, resolveBoardRules } from "../core";
+import type { Board, DifficultyConfig, Fruit, FruitRecord } from "../core";
+import { AI_PHASE_WEIGHTS } from "./policy";
 import type { AiPolicy } from "./policy";
-import type { PlacementCandidate, ResolveSummary, SimState } from "./simulation";
-import type { AiGameSnapshot } from "./types";
+import { cloneBoard } from "./simulation";
+import type { PlacementCandidate, SimState } from "./simulation";
+import type { AiGameSnapshot, AiPhase } from "./types";
 
-type BoardMetrics = {
+export type BoardMetrics = {
   totalHeight: number;
   maxHeight: number;
   holes: number;
@@ -15,60 +17,101 @@ type BoardMetrics = {
   waterAdjacency: number;
 };
 
-export function evaluatePlacement(candidate: PlacementCandidate, state: SimState, snapshot: AiGameSnapshot, policy: AiPolicy): number {
+export type ChainPotential = {
+  bestTriggerChain: number;
+  triggerOptions: number;
+};
+
+export type AiEvaluationContext = {
+  snapshot: AiGameSnapshot;
+  policy: AiPolicy;
+  phase: AiPhase;
+  difficulty: DifficultyConfig;
+  chainPotentialCache: Map<string, ChainPotential>;
+};
+
+export function evaluatePlacement(candidate: PlacementCandidate, state: SimState, context: AiEvaluationContext): number {
+  const { snapshot, phase } = context;
+  const weights = AI_PHASE_WEIGHTS[phase];
+  const before = getBoardMetrics(state.board);
   const metrics = getBoardMetrics(candidate.board);
   const setup = metrics.adjacentPairs + metrics.readyTriples * 4;
-  const stockGain = stockDeltaValue(state, candidate, snapshot, policy);
-  const mode = modePlacementBonus(candidate, metrics, snapshot);
-  const survival = Math.max(0, ROWS * COLS - metrics.totalHeight) * policy.survivalWeight * 0.015;
+  const potential = needsChainPotential(phase) ? getChainPotential(candidate.board, context.difficulty, context.chainPotentialCache) : EMPTY_CHAIN_POTENTIAL;
+  const stockGain = stockDeltaValue(state, candidate, snapshot) * weights.stock;
+  const survival = Math.max(0, ROWS * COLS - metrics.totalHeight) * weights.survival * 0.015;
+  const recordGain = Math.max(0, candidate.chain - state.bestChain);
+  const waterCleared = Math.max(0, before.waterCells - metrics.waterCells);
+  const clearPenalty = candidate.chain > 0 ? weights.clearPenalty : 0;
+  const nonRecordClearPenalty = candidate.chain > 0 && recordGain === 0 ? weights.nonRecordClearPenalty : 0;
+  const completionBonus = getCompletionBonus(candidate, waterCleared, state, context);
+
   return (
-    candidate.score * policy.immediateClearWeight +
-    candidate.chain * policy.chainWeight +
-    getChainScoreMultiplier(candidate.chain) * 90 +
-    setup * policy.chainSetupWeight +
+    candidate.score * weights.score +
+    candidate.chain * weights.chain +
+    getChainScoreMultiplier(candidate.chain) * weights.chain * 0.4 +
+    recordGain * recordGain * weights.recordGain +
+    setup * weights.chainSetup +
+    potential.bestTriggerChain * weights.chainPotential +
+    potential.triggerOptions * weights.triggerOptions +
     stockGain +
-    mode +
+    waterCleared * weights.waterCleared +
+    metrics.waterAdjacency * weights.waterAdjacency +
     survival +
+    completionBonus +
     candidate.landingY * 3 -
-    metrics.totalHeight * policy.heightWeight -
-    metrics.holes * policy.holeWeight -
-    metrics.topRisk * policy.topRiskWeight -
+    clearPenalty -
+    nonRecordClearPenalty -
+    metrics.totalHeight * weights.height -
+    metrics.holes * weights.holes -
+    metrics.topRisk * weights.topRisk -
     metrics.maxHeight * 4
   );
 }
 
-export function evaluateTerminal(board: Board, state: SimState, snapshot: AiGameSnapshot, policy: AiPolicy): number {
+export function evaluateTerminal(board: Board, state: SimState, context: AiEvaluationContext): number {
+  const weights = AI_PHASE_WEIGHTS[context.phase];
   const metrics = getBoardMetrics(board);
   const stock = totalStock(state.juiceStock);
-  const shipment = snapshot.shipment.enabled ? calculateShipmentScore(stock, 1) * 0.16 : 0;
+  const shipment = context.snapshot.shipment.enabled ? calculateShipmentScore(stock, 1) * 0.16 : 0;
+  const potential = needsChainPotential(context.phase) ? getChainPotential(board, context.difficulty, context.chainPotentialCache) : EMPTY_CHAIN_POTENTIAL;
   return (
-    metrics.adjacentPairs * policy.chainSetupWeight +
-    metrics.readyTriples * policy.chainSetupWeight * 4 +
-    stock * policy.stockValueWeight +
-    shipment -
-    metrics.totalHeight * policy.heightWeight -
-    metrics.holes * policy.holeWeight -
-    metrics.topRisk * policy.topRiskWeight -
+    metrics.adjacentPairs * weights.chainSetup +
+    metrics.readyTriples * weights.chainSetup * 4 +
+    potential.bestTriggerChain * weights.chainPotential +
+    potential.triggerOptions * weights.triggerOptions +
+    stock * weights.stock +
+    shipment * weights.score -
+    metrics.totalHeight * weights.height -
+    metrics.holes * weights.holes -
+    metrics.topRisk * weights.topRisk -
     metrics.maxHeight * 6
   );
 }
 
-export function evaluateJuice(summary: ResolveSummary, fruit: Fruit, snapshot: AiGameSnapshot, policy: AiPolicy): number {
-  const before = getBoardMetrics(snapshot.board);
-  const after = getBoardMetrics(summary.board);
-  const dangerRelief = Math.max(0, before.topRisk - after.topRisk) * 150 + Math.max(0, before.maxHeight - after.maxHeight) * 42;
-  const clearValue = summary.clearScore + summary.removed * 45 + summary.chain * 180;
-  const setupValue = (after.readyTriples - before.readyTriples) * policy.chainSetupWeight * 4 + (after.adjacentPairs - before.adjacentPairs) * policy.chainSetupWeight;
-  const mode = modeJuiceBonus(fruit, summary, snapshot);
-  const holdPenalty = juiceHoldPenalty(snapshot, policy);
-  return clearValue + dangerRelief + setupValue + mode - holdPenalty - after.topRisk * 18;
-}
+export function getChainPotential(board: Board, difficulty: DifficultyConfig, cache?: Map<string, ChainPotential>): ChainPotential {
+  const key = cache ? boardKey(board) : "";
+  const cached = cache?.get(key);
+  if (cached) return cached;
 
-export function shouldHoldJuice(snapshot: AiGameSnapshot, policy: AiPolicy): boolean {
-  if (snapshot.settings.mode === "waterCleanup") return false;
-  if (!snapshot.shipment.enabled) return false;
-  if (getBoardMetrics(snapshot.board).topRisk >= policy.dangerJuiceThreshold) return false;
-  return snapshot.shipment.remainingMs <= policy.shipmentHoldSeconds * 1000 && totalStock(snapshot.juiceStock) > 0;
+  let bestTriggerChain = 0;
+  let triggerOptions = 0;
+  for (let x = 0; x < COLS; x += 1) {
+    const landingY = getSingleFruitLandingY(board, x);
+    if (landingY <= 0) continue;
+    const possibleTriggers = getAdjacentFruits(board, x, landingY);
+    for (const fruit of possibleTriggers) {
+      const probe = cloneBoard(board);
+      probe[landingY][x] = fruit;
+      const resolved = resolveBoardRules(probe, { difficulty });
+      if (resolved.chain <= 0) continue;
+      triggerOptions += 1;
+      bestTriggerChain = Math.max(bestTriggerChain, resolved.chain);
+    }
+  }
+
+  const result = { bestTriggerChain, triggerOptions };
+  cache?.set(key, result);
+  return result;
 }
 
 export function getBoardMetrics(board: Board): BoardMetrics {
@@ -78,15 +121,15 @@ export function getBoardMetrics(board: Board): BoardMetrics {
   let topRisk = 0;
   let waterCells = 0;
   for (let x = 0; x < COLS; x += 1) {
-    let seenFruit = false;
+    let seenCell = false;
     let height = 0;
     for (let y = 0; y < ROWS; y += 1) {
       if (board[y][x]) {
         if (isWaterCell(board[y][x])) waterCells += 1;
-        seenFruit = true;
+        seenCell = true;
         if (height === 0) height = ROWS - y;
         if (y < 3) topRisk += 3 - y;
-      } else if (seenFruit) {
+      } else if (seenCell) {
         holes += 1;
       }
     }
@@ -105,11 +148,17 @@ export function getBoardMetrics(board: Board): BoardMetrics {
   };
 }
 
+const EMPTY_CHAIN_POTENTIAL: ChainPotential = { bestTriggerChain: 0, triggerOptions: 0 };
+
+function needsChainPotential(phase: AiPhase): boolean {
+  return phase === "chainBuild" || phase === "chainTrigger";
+}
+
 function totalStock(stock: FruitRecord): number {
   return FRUITS.reduce((total, fruit) => total + stock[fruit], 0);
 }
 
-function stockDeltaValue(state: SimState, candidate: PlacementCandidate, snapshot: AiGameSnapshot, policy: AiPolicy): number {
+function stockDeltaValue(state: SimState, candidate: PlacementCandidate, snapshot: AiGameSnapshot): number {
   const next = applyJuiceAwards({
     juiceProgress: state.juiceProgress,
     juiceStock: state.juiceStock,
@@ -117,64 +166,43 @@ function stockDeltaValue(state: SimState, candidate: PlacementCandidate, snapsho
     featuredFruit: snapshot.featuredFruit,
     difficulty: getDifficultyConfig(snapshot.settings.difficulty),
   });
-  const gained = Math.max(0, totalStock(next.juiceStock) - totalStock(state.juiceStock));
-  let value = gained * policy.stockValueWeight;
-  if (snapshot.shipment.enabled && totalStock(state.juiceStock) > 0) {
-    value += snapshot.shipment.previewScore * 0.04;
-  }
-  return value;
+  return Math.max(0, totalStock(next.juiceStock) - totalStock(state.juiceStock));
 }
 
-function modePlacementBonus(candidate: PlacementCandidate, metrics: BoardMetrics, snapshot: AiGameSnapshot): number {
-  if (snapshot.settings.mode === "chainChallenge") {
-    const remaining = snapshot.challenge.remainingMs ?? 60_000;
-    const urgency = remaining < 15_000 ? 1.55 : remaining < 30_000 ? 1.25 : 1;
-    const bestChainGain = Math.max(0, candidate.chain - snapshot.challenge.runBestChain);
-    return candidate.chain * 560 * urgency + bestChainGain * 360 + metrics.readyTriples * 300 + metrics.adjacentPairs * 16;
+function getCompletionBonus(candidate: PlacementCandidate, waterCleared: number, state: SimState, context: AiEvaluationContext): number {
+  if (context.phase === "scoreRush") {
+    const target = context.snapshot.challenge.targetScore;
+    if (target && state.score < target && state.score + candidate.score >= target) return 5_000;
   }
-  if (snapshot.settings.mode === "scoreAttack") {
-    const target = snapshot.challenge.targetScore ?? snapshot.score;
-    const deficit = Math.max(0, target - snapshot.score);
-    const targetPressure = deficit <= 120_000 ? 1.35 : 1;
-    const shipmentValue = snapshot.shipment.enabled ? snapshot.shipment.previewScore * 0.08 : 0;
-    return Math.min(900, deficit / 1000) + candidate.score * 0.5 * targetPressure + shipmentValue;
-  }
-  if (snapshot.settings.mode === "waterCleanup") {
-    const before = getBoardMetrics(snapshot.board);
-    const waterCleared = Math.max(0, before.waterCells - metrics.waterCells);
-    const adjacencyGain = Math.max(0, metrics.waterAdjacency - before.waterAdjacency);
-    return waterCleared * 620 + adjacencyGain * 150 + metrics.waterAdjacency * 90 + candidate.removed * 12;
+  if (context.phase === "waterClear") {
+    const target = context.snapshot.challenge.targetWaterClears;
+    if (target && state.waterClears + waterCleared >= target) return 5_000;
   }
   return 0;
 }
 
-function modeJuiceBonus(fruit: Fruit, summary: ResolveSummary, snapshot: AiGameSnapshot): number {
-  if (snapshot.settings.mode === "chainChallenge" && (fruit === "berry" || fruit === "lemon" || fruit === "melon")) {
-    const bestChainGain = Math.max(0, summary.chain - snapshot.challenge.runBestChain);
-    return 300 + summary.chain * 150 + bestChainGain * 300;
+function getSingleFruitLandingY(board: Board, x: number): number {
+  for (let y = 0; y < ROWS; y += 1) {
+    if (board[y][x] !== null) return y - 1;
   }
-  if (snapshot.settings.mode === "scoreAttack") {
-    const target = snapshot.challenge.targetScore ?? snapshot.score;
-    const deficit = Math.max(0, target - snapshot.score);
-    const targetPressure = deficit <= 120_000 ? 1.25 : 1;
-    return summary.clearScore * 0.55 * targetPressure;
-  }
-  if (snapshot.settings.mode === "waterCleanup") {
-    const before = getBoardMetrics(snapshot.board);
-    const after = getBoardMetrics(summary.board);
-    const waterCleared = Math.max(0, before.waterCells - after.waterCells);
-    const openedWater = Math.max(0, before.waterAdjacency - after.waterAdjacency);
-    const target = snapshot.challenge.targetWaterClears ?? 0;
-    const remainingAfter = Math.max(0, target - snapshot.challenge.runWaterClears - waterCleared);
-    const clearBonus = target > 0 && remainingAfter === 0 ? 2_400 : 0;
-    return waterCleared * 760 + openedWater * 190 + clearBonus;
-  }
-  return 0;
+  return ROWS - 1;
 }
 
-function juiceHoldPenalty(snapshot: AiGameSnapshot, policy: AiPolicy): number {
-  if (!shouldHoldJuice(snapshot, policy)) return 0;
-  return policy.shipmentHoldBonus + snapshot.shipment.previewScore * 0.25;
+function getAdjacentFruits(board: Board, x: number, y: number): Set<Fruit> {
+  const fruits = new Set<Fruit>();
+  for (const [neighborX, neighborY] of [
+    [x - 1, y],
+    [x + 1, y],
+    [x, y + 1],
+  ]) {
+    const cell = board[neighborY]?.[neighborX];
+    if (isFruitCell(cell)) fruits.add(cell);
+  }
+  return fruits;
+}
+
+function boardKey(board: Board): string {
+  return board.map((row) => row.map((cell) => cell?.[0] ?? ".").join("")).join("");
 }
 
 function adjacentPotential(board: Board): number {

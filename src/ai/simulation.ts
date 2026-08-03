@@ -8,11 +8,12 @@ import {
   getJuiceEffectCenter,
   getPieceCells,
   isValidPiece,
+  makeJuiceDrop,
   makePiece,
   movedPiece,
   resolveBoardRules,
 } from "../core";
-import type { Board, DifficultyConfig, Fruit, FruitPair, FruitRecord, PairPiece } from "../core";
+import type { Board, DifficultyConfig, Fruit, FruitRecord, NextPiecePreview, PairPiece } from "../core";
 import type { AiCommand } from "./types";
 
 export type PlacementCandidate = {
@@ -28,10 +29,13 @@ export type PlacementCandidate = {
 
 export type SimState = {
   board: Board;
-  nextQueue: FruitPair[];
+  nextPreviews: NextPiecePreview[];
   juiceStock: FruitRecord;
   juiceProgress: FruitRecord;
   featuredFruit: Fruit;
+  score: number;
+  bestChain: number;
+  waterClears: number;
 };
 
 export type ResolveSummary = {
@@ -96,16 +100,20 @@ export function simulatePlacement(state: SimState, candidate: PlacementCandidate
   });
   return {
     board: cloneBoard(candidate.board),
-    nextQueue: state.nextQueue.slice(1).map(clonePair),
+    nextPreviews: state.nextPreviews.slice(1).map(clonePreview),
     juiceProgress: juice.juiceProgress,
     juiceStock: juice.juiceStock,
     featuredFruit: state.featuredFruit,
+    score: state.score + candidate.score,
+    bestChain: Math.max(state.bestChain, candidate.chain),
+    waterClears: state.waterClears + countWater(state.board) - countWater(candidate.board),
   };
 }
 
-export function nextActiveFromQueue(nextQueue: FruitPair[]): PairPiece | null {
-  const pair = nextQueue[0];
-  return pair ? makePiece(pair) : null;
+export function nextActiveFromPreviews(nextPreviews: NextPiecePreview[]): PairPiece | null {
+  const preview = nextPreviews[0];
+  if (!preview) return null;
+  return preview.kind === "juiceDrop" ? makeJuiceDrop(preview.fruit) : makePiece(preview.pair);
 }
 
 export function simulateJuice(state: SimState, active: PairPiece | null, fruit: Fruit, difficulty: DifficultyConfig): ResolveSummary {
@@ -117,8 +125,8 @@ export function simulateJuice(state: SimState, active: PairPiece | null, fruit: 
   };
 }
 
-export function clonePair(pair: FruitPair): FruitPair {
-  return [pair[0], pair[1]];
+export function clonePreview(preview: NextPiecePreview): NextPiecePreview {
+  return preview.kind === "juiceDrop" ? { kind: "juiceDrop", fruit: preview.fruit } : { kind: "fruitPair", pair: [preview.pair[0], preview.pair[1]] };
 }
 
 function settleOnClone(board: Board, piece: PairPiece, difficulty?: DifficultyConfig): ResolveSummary {
@@ -172,4 +180,14 @@ function commandsFor(active: PairPiece, rotations: number, targetX: number): AiC
 
 function resolveBoardWithoutDifficulty(board: Board): ResolveSummary {
   return resolveBoardRules(board, { difficulty: FALLBACK_DIFFICULTY });
+}
+
+function countWater(board: Board): number {
+  let total = 0;
+  for (const row of board) {
+    for (const cell of row) {
+      if (cell === "water") total += 1;
+    }
+  }
+  return total;
 }

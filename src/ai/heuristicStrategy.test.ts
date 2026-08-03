@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_SHIPMENT_INTERVAL_SECONDS, FRUITS, GameModel } from "../core";
 import type { Board, Cell, Fruit, GameModeId } from "../core";
+import { getChainPotential } from "./evaluation";
 import { enumeratePlacements, heuristicAiStrategy } from "./heuristicStrategy";
-import { cloneBoard, cloneFruitRecord, clonePair, simulateJuice, simulatePlacement } from "./simulation";
+import { cloneBoard, cloneFruitRecord, clonePreview, nextActiveFromPreviews, simulateJuice, simulatePlacement } from "./simulation";
 import type { AiGameSnapshot } from "./types";
 
 describe("heuristic AI strategy", () => {
@@ -160,6 +161,109 @@ describe("heuristic AI strategy", () => {
     expect(chain.reason).toContain("Lookahead");
   });
 
+  it("builds chain potential instead of taking an early one-chain clear", () => {
+    const game = fixedGame(["apple", "orange"]);
+    game.start();
+    game.active = { axis: { x: 2, y: 0, fruit: "apple" }, satellite: { fruit: "orange", rotation: 0 } };
+    game.board = boardFromRows([
+      "......",
+      "......",
+      "......",
+      "......",
+      "......",
+      "......",
+      "......",
+      "......",
+      "......",
+      "......",
+      "......",
+      "aaa...",
+    ]);
+
+    const normal = heuristicAiStrategy.choose(createSnapshot(game));
+    const chain = heuristicAiStrategy.choose(createSnapshot(game, { mode: "chainChallenge", runBestChain: 2 }));
+
+    expect(normal.reason).toContain("c1");
+    expect(chain.phase).toBe("chainBuild");
+    expect(chain.reason).toContain("c0");
+    expect(chain.commands).not.toEqual(normal.commands);
+  });
+
+  it("fires an available chain in the final 15 seconds", () => {
+    const game = fixedGame(["apple", "orange"]);
+    game.start();
+    game.active = { axis: { x: 2, y: 0, fruit: "apple" }, satellite: { fruit: "orange", rotation: 0 } };
+    game.board = boardFromRows([
+      "......",
+      "......",
+      "......",
+      "......",
+      "......",
+      "......",
+      "......",
+      "......",
+      "......",
+      "......",
+      "......",
+      "aaa...",
+    ]);
+
+    const decision = heuristicAiStrategy.choose(createSnapshot(game, { mode: "chainChallenge", remainingMs: 10_000 }));
+
+    expect(decision.phase).toBe("chainTrigger");
+    expect(decision.reason).toContain("c1");
+  });
+
+  it("switches to survival when the board reaches ten rows high", () => {
+    const game = fixedGame(["apple", "orange"]);
+    game.start();
+    game.board = boardFromRows([
+      "......",
+      "......",
+      "a.....",
+      "o.....",
+      "l.....",
+      "g.....",
+      "m.....",
+      "b.....",
+      "a.....",
+      "o.....",
+      "l.....",
+      "g.....",
+    ]);
+
+    const decision = heuristicAiStrategy.choose(createSnapshot(game, { mode: "chainChallenge" }));
+
+    expect(decision.phase).toBe("survive");
+  });
+
+  it("measures a legal single-fruit trigger that resolves a two-chain setup", () => {
+    const game = fixedGame();
+    game.start();
+    const board = boardFromRows([
+      "......",
+      "......",
+      "......",
+      "......",
+      "......",
+      "......",
+      "......",
+      "......",
+      "..o...",
+      "..o...",
+      "ooa...",
+      "aaa...",
+    ]);
+
+    expect(getChainPotential(board, game.difficulty)).toMatchObject({ bestTriggerChain: 2 });
+  });
+
+  it("turns a visible Juice Drop preview into the next simulated active piece", () => {
+    const next = nextActiveFromPreviews([{ kind: "juiceDrop", fruit: "berry" }]);
+
+    expect(next).toMatchObject({ kind: "juiceDrop", axis: { fruit: "berry" } });
+  });
+
   it("raises high-score clear value in score attack", () => {
     const game = fixedGame(["apple", "orange"]);
     game.start();
@@ -180,9 +284,10 @@ describe("heuristic AI strategy", () => {
     ]);
 
     const normal = heuristicAiStrategy.choose(createSnapshot(game));
-    const attack = heuristicAiStrategy.choose(createSnapshot(game, { mode: "scoreAttack", score: 940_000 }));
+    const attack = heuristicAiStrategy.choose(createSnapshot(game, { mode: "scoreAttack", score: 49_900 }));
 
     expect(attack.score).toBeGreaterThan(normal.score);
+    expect(attack.phase).toBe("scoreRush");
   });
 
   it("raises water-clearing value in water cleanup", () => {
@@ -208,6 +313,7 @@ describe("heuristic AI strategy", () => {
     const cleanup = heuristicAiStrategy.choose(createSnapshot(game, { mode: "waterCleanup", runWaterClears: 0 }));
 
     expect(cleanup.score).toBeGreaterThan(normal.score);
+    expect(cleanup.phase).toBe("waterClear");
   });
 
   it("aims a Juice Drop normally during water cleanup", () => {
@@ -240,7 +346,7 @@ describe("heuristic AI strategy", () => {
     game.start();
     const active = game.active!;
     const boardBefore = cloneBoard(game.board);
-    const queueBefore = game.nextQueue.map(clonePair);
+    const previewsBefore = game.nextPreviews.map(clonePreview);
     const stockBefore = cloneFruitRecord(game.juiceStock);
     const progressBefore = cloneFruitRecord(game.juiceProgress);
     const candidate = enumeratePlacements(game.board, active, game.difficulty)[0];
@@ -248,17 +354,20 @@ describe("heuristic AI strategy", () => {
     simulatePlacement(
       {
         board: game.board,
-        nextQueue: game.nextQueue,
+        nextPreviews: game.nextPreviews,
         juiceStock: game.juiceStock,
         juiceProgress: game.juiceProgress,
         featuredFruit: game.featuredFruit,
+        score: game.score,
+        bestChain: 0,
+        waterClears: 0,
       },
       candidate,
       game.difficulty,
     );
 
     expect(game.board).toEqual(boardBefore);
-    expect(game.nextQueue).toEqual(queueBefore);
+    expect(game.nextPreviews).toEqual(previewsBefore);
     expect(game.juiceStock).toEqual(stockBefore);
     expect(game.juiceProgress).toEqual(progressBefore);
   });
@@ -299,10 +408,13 @@ describe("heuristic AI strategy", () => {
           "......",
           "aaaa..",
         ]),
-        nextQueue: game.nextQueue,
+        nextPreviews: game.nextPreviews,
         juiceStock: { apple: 0, orange: 0, lemon: 0, grape: 0, melon: 1, berry: 0 },
         juiceProgress: { apple: 0, orange: 0, lemon: 0, grape: 0, melon: 0, berry: 0 },
         featuredFruit: "apple",
+        score: 0,
+        bestChain: 0,
+        waterClears: 0,
       },
       game.active,
       "melon",
@@ -332,10 +444,13 @@ describe("heuristic AI strategy", () => {
           "......",
           "......",
         ]),
-        nextQueue: [["orange", "orange"]],
+        nextPreviews: [{ kind: "fruitPair", pair: ["orange", "orange"] }],
         juiceStock: { apple: 0, orange: 0, lemon: 0, grape: 0, melon: 0, berry: 0 },
         juiceProgress: { apple: 2, orange: 0, lemon: 0, grape: 0, melon: 0, berry: 0 },
         featuredFruit: "apple",
+        score: 0,
+        bestChain: 0,
+        waterClears: 0,
       },
       {
         commands: [{ kind: "hardDrop" }],
@@ -365,6 +480,9 @@ describe("heuristic AI strategy", () => {
 
     expect(next.juiceStock.apple).toBe(1);
     expect(next.juiceProgress.apple).toBe(2);
+    expect(next.score).toBe(400);
+    expect(next.bestChain).toBe(1);
+    expect(next.waterClears).toBe(0);
   });
 });
 
@@ -375,13 +493,14 @@ function createSnapshot(
     runBestChain?: number;
     runWaterClears?: number;
     targetWaterClears?: number;
+    remainingMs?: number;
   } = {},
 ): AiGameSnapshot {
   const mode = overrides.mode ?? "normal";
   return {
     board: game.board,
     active: overrides.active ?? game.active,
-    nextQueue: overrides.nextQueue ?? game.nextQueue,
+    nextPreviews: overrides.nextPreviews ?? game.nextPreviews,
     state: overrides.state ?? game.state,
     score: overrides.score ?? game.score,
     lastChain: overrides.lastChain ?? game.lastChain,
@@ -402,7 +521,7 @@ function createSnapshot(
     challenge: overrides.challenge ?? {
       mode,
       elapsedMs: 0,
-      remainingMs: mode === "chainChallenge" ? 60_000 : undefined,
+      remainingMs: mode === "chainChallenge" ? (overrides.remainingMs ?? 60_000) : undefined,
       targetScore: mode === "scoreAttack" ? 50_000 : undefined,
       targetWaterClears: overrides.targetWaterClears ?? (mode === "waterCleanup" ? 30 : undefined),
       runBestChain: overrides.runBestChain ?? 0,

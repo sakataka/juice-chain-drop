@@ -1,4 +1,6 @@
-import type { Board, ChallengeResult, DifficultyId, Fruit, FruitPair, FruitRecord, GameModeId, GameState, PairPiece } from "../core";
+import type { Board, ChallengeResult, DifficultyId, Fruit, FruitRecord, GameModeId, GameState, NextPiecePreview, PairPiece } from "../core";
+
+export type AiPhase = "balanced" | "scoreRush" | "chainBuild" | "chainTrigger" | "waterClear" | "survive";
 
 export type AiCommand =
   | { kind: "move"; dx: -1 | 1 }
@@ -15,12 +17,14 @@ export type AiPlan = {
 
 export type AiDecision = AiPlan & {
   evaluatedMoves: number;
+  mode: GameModeId;
+  phase: AiPhase;
 };
 
 export type AiGameSnapshot = {
   board: Board;
   active: PairPiece | null;
-  nextQueue: FruitPair[];
+  nextPreviews: NextPiecePreview[];
   state: GameState;
   score: number;
   lastChain: number;
@@ -60,4 +64,6 @@ export type AiRunnerState = {
   intervalMs: number;
   pendingCommands: number;
   lastReason: string;
+  mode: GameModeId | null;
+  phase: AiPhase | null;
 };
