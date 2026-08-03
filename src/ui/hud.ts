@@ -8,6 +8,8 @@ import type { PlayerStats } from "../storage/stats";
 export type HudSnapshot = {
   score: number;
   lastChain: number;
+  bestScore: number;
+  bestChain: number;
   state: GameState;
   juiceStock: FruitRecord;
   juiceProgress: FruitRecord;
@@ -134,8 +136,8 @@ export class HudController {
     this.scoreValue.textContent = snapshot.score.toLocaleString();
     this.scoreValue.dataset.scoreSize = getScoreSize(snapshot.score);
     this.chainValue.textContent = String(snapshot.lastChain);
-    this.bestScoreValue.textContent = snapshot.stats.bestScore.toLocaleString();
-    this.bestChainValue.textContent = String(snapshot.stats.bestChain);
+    this.bestScoreValue.textContent = snapshot.bestScore.toLocaleString();
+    this.bestChainValue.textContent = String(snapshot.bestChain);
     this.juiceDropsValue.textContent = String(snapshot.juiceDropsCreated);
     this.difficultySelect.value = snapshot.settings.difficulty;
     this.difficultySelect.title = getDifficultyTitle(snapshot.settings.difficulty);

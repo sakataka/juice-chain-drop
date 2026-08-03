@@ -115,6 +115,9 @@ test("keeps fast Chain Challenge Auto Play responsive during sustained search", 
   expect(after.ai.maxDecisionMs).toBeLessThan(250);
   expect(after.ai.chainPotentialEvaluations).toBeLessThanOrEqual(96);
   expect(after.debug.lastError).toBeNull();
+  await expect.poll(async () => (await page.evaluate(() => window.__juiceDebug?.() as any))?.hud.bestChain, { timeout: 15_000 }).toBeGreaterThan(0);
+  const liveBestChain = await page.evaluate(() => (window.__juiceDebug?.() as any)?.hud.bestChain);
+  await expect(page.locator("#bestChainValue")).toHaveText(String(liveBestChain));
 });
 
 test("puts a completed bottle into Next and bursts it on landing", async ({ page }) => {

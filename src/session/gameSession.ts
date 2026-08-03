@@ -261,6 +261,8 @@ export class GameSession {
     return {
       score: this.game.score,
       lastChain: this.game.lastChain,
+      bestScore: Math.max(this.stats.bestScore, this.game.score),
+      bestChain: Math.max(this.stats.bestChain, this.challenge.runBestChain),
       state: this.game.state,
       juiceStock: this.game.juiceStock,
       juiceProgress: this.game.juiceProgress,

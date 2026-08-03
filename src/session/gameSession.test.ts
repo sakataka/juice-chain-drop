@@ -78,6 +78,24 @@ describe("GameSession", () => {
     expect(session.getRenderSnapshot().active?.axis.y).toBe(beforeY);
   });
 
+  it("exposes live best score and chain before game-over persistence", () => {
+    const { session, game } = createSession({ settings: { ...settings, mode: "chainChallenge" } });
+    session.start();
+    game.board[11][0] = "apple";
+    game.board[11][1] = "apple";
+    game.board[11][2] = "apple";
+    game.active = { axis: { x: 3, y: 0, fruit: "apple" }, satellite: { fruit: "orange", rotation: 0 } };
+
+    session.hardDrop();
+
+    const hud = session.getHudSnapshot();
+    expect(hud.lastChain).toBe(1);
+    expect(hud.bestChain).toBe(1);
+    expect(hud.bestScore).toBe(hud.score);
+    expect(hud.stats.bestChain).toBe(0);
+    expect(hud.stats.bestScore).toBe(0);
+  });
+
   it("blocks gameplay commands while paused", () => {
     const { session } = createSession();
     session.start();
