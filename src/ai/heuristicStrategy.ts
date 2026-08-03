@@ -27,7 +27,7 @@ export const heuristicAiStrategy: AiStrategy = {
   choose(snapshot) {
     const objective = AI_MODE_OBJECTIVES[snapshot.settings.mode];
     if (snapshot.state !== "playing" || !snapshot.active) {
-      return decision(snapshot.settings.mode, objective.defaultPhase, [{ kind: "wait" }], 0, "AI idle", 0);
+      return decision(snapshot.settings.mode, objective.defaultPhase, [{ kind: "wait" }], 0, "AI idle", 0, 0);
     }
 
     const difficulty = getDifficultyConfig(snapshot.settings.difficulty);
@@ -50,13 +50,13 @@ export const heuristicAiStrategy: AiStrategy = {
     const evaluation: AiEvaluationContext = { snapshot, policy, phase, difficulty, chainPotentialCache };
     const placement = searchPlacements(state, snapshot.active, evaluation, 0, rootCandidates);
 
-    if (!placement.first) return decision(snapshot.settings.mode, phase, [{ kind: "hardDrop" }], -10_000, "No legal AI placement", placement.evaluated);
+    if (!placement.first) return decision(snapshot.settings.mode, phase, [{ kind: "hardDrop" }], -10_000, "No legal AI placement", placement.evaluated, chainPotentialCache.size);
 
     const resultMetrics = getBoardMetrics(placement.first.board);
-    const potential = getChainPotential(placement.first.board, difficulty, chainPotentialCache);
+    const potential = snapshot.settings.mode === "chainChallenge" ? getChainPotential(placement.first.board, difficulty, chainPotentialCache) : { bestTriggerChain: 0, triggerOptions: 0 };
     const action = snapshot.active.kind === "juiceDrop" ? `Juice Drop ${snapshot.active.axis.fruit}` : `Lookahead d${DEFAULT_AI_POLICY.searchDepth}`;
     const reason = `${snapshot.settings.mode}/${phase} ${action} c${placement.first.chain} r${placement.first.removed} potential${potential.bestTriggerChain} risk${resultMetrics.topRisk}`;
-    return decision(snapshot.settings.mode, phase, placement.first.commands, placement.score, reason, placement.evaluated);
+    return decision(snapshot.settings.mode, phase, placement.first.commands, placement.score, reason, placement.evaluated, chainPotentialCache.size);
   },
 };
 
@@ -73,7 +73,7 @@ function searchPlacements(
   }
 
   const ranked = candidates
-    .map((candidate) => ({ candidate, score: evaluatePlacement(candidate, state, context) }))
+    .map((candidate) => ({ candidate, score: evaluatePlacement(candidate, state, context, depth) }))
     .sort((a, b) => b.score - a.score)
     .slice(0, context.policy.beamWidth);
 
@@ -109,6 +109,14 @@ function createSimState(snapshot: AiGameSnapshot): SimState {
   };
 }
 
-function decision(mode: AiGameSnapshot["settings"]["mode"], phase: AiPhase, commands: AiCommand[], score: number, reason: string, evaluatedMoves: number): AiDecision {
-  return { commands, score, reason, evaluatedMoves, mode, phase };
+function decision(
+  mode: AiGameSnapshot["settings"]["mode"],
+  phase: AiPhase,
+  commands: AiCommand[],
+  score: number,
+  reason: string,
+  evaluatedMoves: number,
+  chainPotentialEvaluations: number,
+): AiDecision {
+  return { commands, score, reason, evaluatedMoves, chainPotentialEvaluations, mode, phase };
 }

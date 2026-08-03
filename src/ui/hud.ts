@@ -118,7 +118,18 @@ export class HudController {
   }
 
   update(snapshot: HudSnapshot): void {
-    const ai = snapshot.ai ?? { enabled: false, intervalMs: 120, pendingCommands: 0, lastReason: "AI standby", mode: null, phase: null };
+    const ai = snapshot.ai ?? {
+      enabled: false,
+      intervalMs: 120,
+      pendingCommands: 0,
+      lastReason: "AI standby",
+      mode: null,
+      phase: null,
+      decisionCount: 0,
+      lastDecisionMs: 0,
+      maxDecisionMs: 0,
+      chainPotentialEvaluations: 0,
+    };
     const juiceThreshold = DIFFICULTY_CONFIGS[snapshot.settings.difficulty].juiceThreshold;
     this.scoreValue.textContent = snapshot.score.toLocaleString();
     this.scoreValue.dataset.scoreSize = getScoreSize(snapshot.score);

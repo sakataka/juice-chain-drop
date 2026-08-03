@@ -98,6 +98,25 @@ test("starts Auto Play in one action and returns control on manual input", async
   await expect.poll(async () => (await page.evaluate(() => window.__juiceDebug?.() as any))?.ai.enabled).toBe(false);
 });
 
+test("keeps fast Chain Challenge Auto Play responsive during sustained search", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "Settings" }).click();
+  await page.getByLabel("Mode").selectOption("chainChallenge");
+  await page.getByLabel("Auto Play Pace").selectOption("fast");
+  await page.getByRole("button", { name: "Auto Play" }).click();
+  await expect.poll(async () => (await page.evaluate(() => window.__juiceDebug?.() as any))?.ai.decisionCount).toBeGreaterThanOrEqual(5);
+  const before = await page.evaluate(() => window.__juiceDebug?.() as any);
+
+  await page.waitForTimeout(4_000);
+
+  const after = await page.evaluate(() => window.__juiceDebug?.() as any);
+  expect(after.debug.frames - before.debug.frames).toBeGreaterThan(60);
+  expect(after.ai.decisionCount).toBeGreaterThan(before.ai.decisionCount);
+  expect(after.ai.maxDecisionMs).toBeLessThan(250);
+  expect(after.ai.chainPotentialEvaluations).toBeLessThanOrEqual(24);
+  expect(after.debug.lastError).toBeNull();
+});
+
 test("puts a completed bottle into Next and bursts it on landing", async ({ page }) => {
   await page.goto("/?testMode=1&testPress=apple");
   await page.getByRole("button", { name: "Start" }).click();

@@ -17,6 +17,7 @@ export type AiPlan = {
 
 export type AiDecision = AiPlan & {
   evaluatedMoves: number;
+  chainPotentialEvaluations: number;
   mode: GameModeId;
   phase: AiPhase;
 };
@@ -66,4 +67,8 @@ export type AiRunnerState = {
   lastReason: string;
   mode: GameModeId | null;
   phase: AiPhase | null;
+  decisionCount: number;
+  lastDecisionMs: number;
+  maxDecisionMs: number;
+  chainPotentialEvaluations: number;
 };

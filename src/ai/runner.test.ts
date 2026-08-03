@@ -104,6 +104,7 @@ describe("AiRunner", () => {
           score: 1,
           reason: snapshot.settings.mode,
           evaluatedMoves: 1,
+          chainPotentialEvaluations: 0,
           mode: snapshot.settings.mode,
           phase: snapshot.settings.mode === "chainChallenge" ? "chainBuild" : "balanced",
         };
@@ -125,6 +126,31 @@ describe("AiRunner", () => {
     expect(plannedModes).toEqual(["normal", "chainChallenge"]);
     expect(runner.getState()).toMatchObject({ mode: "chainChallenge", phase: "chainBuild" });
   });
+
+  it("records decision duration for the debug watchdog", () => {
+    const { session } = createSession();
+    session.start();
+    let currentTime = 100;
+    const strategy: AiStrategy = {
+      id: "timed-script",
+      choose: (snapshot) => {
+        currentTime += 12;
+        return { commands: [{ kind: "hardDrop" }], score: 1, reason: "timed", evaluatedMoves: 1, chainPotentialEvaluations: 3, mode: snapshot.settings.mode, phase: "balanced" };
+      },
+    };
+    const runner = new AiRunner({
+      getSnapshot: () => createAiSnapshot(session),
+      executeCommand: (command) => executeAiCommand(session, command),
+      strategy,
+      now: () => currentTime,
+    });
+    runner.setEnabled(true);
+    runner.setIntervalMs(40);
+
+    runner.tick(40);
+
+    expect(runner.getState()).toMatchObject({ decisionCount: 1, lastDecisionMs: 12, maxDecisionMs: 12, chainPotentialEvaluations: 3 });
+  });
 });
 
 function createSession(): { session: GameSession; game: GameModel } {
@@ -143,7 +169,7 @@ function createSession(): { session: GameSession; game: GameModel } {
 function scriptedStrategy(commands: AiCommand[]): AiStrategy {
   return {
     id: "scripted",
-    choose: (snapshot) => ({ commands, score: 1, reason: "scripted", evaluatedMoves: 1, mode: snapshot.settings.mode, phase: "balanced" }),
+    choose: (snapshot) => ({ commands, score: 1, reason: "scripted", evaluatedMoves: 1, chainPotentialEvaluations: 0, mode: snapshot.settings.mode, phase: "balanced" }),
   };
 }
 

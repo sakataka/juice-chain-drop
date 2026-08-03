@@ -30,13 +30,13 @@ export type AiEvaluationContext = {
   chainPotentialCache: Map<string, ChainPotential>;
 };
 
-export function evaluatePlacement(candidate: PlacementCandidate, state: SimState, context: AiEvaluationContext): number {
+export function evaluatePlacement(candidate: PlacementCandidate, state: SimState, context: AiEvaluationContext, depth: number): number {
   const { snapshot, phase } = context;
   const weights = AI_PHASE_WEIGHTS[phase];
   const before = getBoardMetrics(state.board);
   const metrics = getBoardMetrics(candidate.board);
   const setup = metrics.adjacentPairs + metrics.readyTriples * 4;
-  const potential = needsChainPotential(phase) ? getChainPotential(candidate.board, context.difficulty, context.chainPotentialCache) : EMPTY_CHAIN_POTENTIAL;
+  const potential = needsChainPotential(phase) && depth === 0 ? getChainPotential(candidate.board, context.difficulty, context.chainPotentialCache) : EMPTY_CHAIN_POTENTIAL;
   const stockGain = stockDeltaValue(state, candidate, snapshot) * weights.stock;
   const survival = Math.max(0, ROWS * COLS - metrics.totalHeight) * weights.survival * 0.015;
   const recordGain = Math.max(0, candidate.chain - state.bestChain);
@@ -73,12 +73,9 @@ export function evaluateTerminal(board: Board, state: SimState, context: AiEvalu
   const metrics = getBoardMetrics(board);
   const stock = totalStock(state.juiceStock);
   const shipment = context.snapshot.shipment.enabled ? calculateShipmentScore(stock, 1) * 0.16 : 0;
-  const potential = needsChainPotential(context.phase) ? getChainPotential(board, context.difficulty, context.chainPotentialCache) : EMPTY_CHAIN_POTENTIAL;
   return (
     metrics.adjacentPairs * weights.chainSetup +
     metrics.readyTriples * weights.chainSetup * 4 +
-    potential.bestTriggerChain * weights.chainPotential +
-    potential.triggerOptions * weights.triggerOptions +
     stock * weights.stock +
     shipment * weights.score -
     metrics.totalHeight * weights.height -

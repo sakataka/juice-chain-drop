@@ -5,6 +5,7 @@ type AiRunnerOptions = {
   getSnapshot: () => AiGameSnapshot;
   executeCommand: (command: AiCommand) => GameSessionCommandResult | null;
   strategy: AiStrategy;
+  now?: () => number;
 };
 
 const DEFAULT_INTERVAL_MS = 120;
@@ -17,10 +18,18 @@ export class AiRunner {
   private queue: AiCommand[] = [];
   private lastDecision: AiDecision | null = null;
   private stalledCommands = 0;
+  private decisionCount = 0;
+  private lastDecisionMs = 0;
+  private maxDecisionMs = 0;
 
   constructor(private readonly options: AiRunnerOptions) {}
 
   setEnabled(enabled: boolean): void {
+    if (enabled && !this.enabled) {
+      this.decisionCount = 0;
+      this.lastDecisionMs = 0;
+      this.maxDecisionMs = 0;
+    }
     this.enabled = enabled;
     if (!enabled) {
       this.queue = [];
@@ -59,7 +68,11 @@ export class AiRunner {
     this.elapsedMs = 0;
 
     if (this.queue.length === 0) {
+      const startedAt = this.now();
       this.lastDecision = this.options.strategy.choose(this.createSnapshot());
+      this.lastDecisionMs = Math.max(0, this.now() - startedAt);
+      this.maxDecisionMs = Math.max(this.maxDecisionMs, this.lastDecisionMs);
+      this.decisionCount += 1;
       this.queue = [...this.lastDecision.commands];
     }
 
@@ -80,6 +93,7 @@ export class AiRunner {
         score: -1,
         reason: "AI unstuck hard drop",
         evaluatedMoves: 0,
+        chainPotentialEvaluations: 0,
         mode: render.settings.mode,
         phase: "survive",
       };
@@ -96,11 +110,19 @@ export class AiRunner {
       lastReason: this.lastDecision?.reason ?? "AI standby",
       mode: this.lastDecision?.mode ?? null,
       phase: this.lastDecision?.phase ?? null,
+      decisionCount: this.decisionCount,
+      lastDecisionMs: this.lastDecisionMs,
+      maxDecisionMs: this.maxDecisionMs,
+      chainPotentialEvaluations: this.lastDecision?.chainPotentialEvaluations ?? 0,
     };
   }
 
   private createSnapshot(): AiGameSnapshot {
     return this.options.getSnapshot();
+  }
+
+  private now(): number {
+    return this.options.now?.() ?? performance.now();
   }
 }
 

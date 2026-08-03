@@ -148,7 +148,18 @@ function createBus(): {
     setEnabled: vi.fn(),
     toggle: vi.fn(() => true),
     setIntervalMs: vi.fn(),
-    getState: () => ({ enabled: false, intervalMs: 120, pendingCommands: 0, lastReason: "test", mode: null, phase: null }),
+    getState: () => ({
+      enabled: false,
+      intervalMs: 120,
+      pendingCommands: 0,
+      lastReason: "test",
+      mode: null,
+      phase: null,
+      decisionCount: 0,
+      lastDecisionMs: 0,
+      maxDecisionMs: 0,
+      chainPotentialEvaluations: 0,
+    }),
   };
   const sound = {
     toggle: vi.fn(),

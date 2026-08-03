@@ -187,6 +187,7 @@ describe("heuristic AI strategy", () => {
     expect(chain.phase).toBe("chainBuild");
     expect(chain.reason).toContain("c0");
     expect(chain.commands).not.toEqual(normal.commands);
+    expect(chain.chainPotentialEvaluations).toBeLessThanOrEqual(enumeratePlacements(game.board, game.active!, game.difficulty).length);
   });
 
   it("fires an available chain in the final 15 seconds", () => {
