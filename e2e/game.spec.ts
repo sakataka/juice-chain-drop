@@ -113,7 +113,7 @@ test("keeps fast Chain Challenge Auto Play responsive during sustained search", 
   expect(after.debug.frames - before.debug.frames).toBeGreaterThan(60);
   expect(after.ai.decisionCount).toBeGreaterThan(before.ai.decisionCount);
   expect(after.ai.maxDecisionMs).toBeLessThan(250);
-  expect(after.ai.chainPotentialEvaluations).toBeLessThanOrEqual(24);
+  expect(after.ai.chainPotentialEvaluations).toBeLessThanOrEqual(96);
   expect(after.debug.lastError).toBeNull();
 });
 

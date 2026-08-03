@@ -1,7 +1,7 @@
 import "./styles.css";
 import "@fontsource/fredoka/600.css";
 import "@fontsource/fredoka/700.css";
-import { AiRunner, heuristicAiStrategy } from "./ai";
+import { AiRunner, getAiIntervalMs, heuristicAiStrategy } from "./ai";
 import { SoundEngine } from "./audio/sound";
 import type { AiSpeed, Fruit } from "./core";
 import { FRUITS } from "./core";
@@ -245,9 +245,7 @@ function toggleAutoPlay(): void {
 }
 
 function aiIntervalForSpeed(speed: AiSpeed): number {
-  if (speed === "slow") return 220;
-  if (speed === "fast") return 65;
-  return 120;
+  return getAiIntervalMs(speed);
 }
 
 function installDebugHook(): void {

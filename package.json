@@ -7,6 +7,7 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "generate:bgm": "bun scripts/generate-bgm.ts",
+    "simulate:ai": "bun scripts/simulate-ai.ts",
     "preview": "vite preview",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",

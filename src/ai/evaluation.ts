@@ -43,6 +43,12 @@ export function evaluatePlacement(candidate: PlacementCandidate, state: SimState
   const waterCleared = Math.max(0, before.waterCells - metrics.waterCells);
   const clearPenalty = candidate.chain > 0 ? weights.clearPenalty : 0;
   const nonRecordClearPenalty = candidate.chain > 0 && recordGain === 0 ? weights.nonRecordClearPenalty : 0;
+  const prematureTriggerPenalty =
+    phase === "chainBuild" &&
+    candidate.chain > 0 &&
+    (candidate.chain < context.policy.buildTriggerMinChain || recordGain < context.policy.buildTriggerMinRecordGain)
+      ? context.policy.prematureTriggerPenalty
+      : 0;
   const completionBonus = getCompletionBonus(candidate, waterCleared, state, context);
 
   return (
@@ -61,6 +67,7 @@ export function evaluatePlacement(candidate: PlacementCandidate, state: SimState
     candidate.landingY * 3 -
     clearPenalty -
     nonRecordClearPenalty -
+    prematureTriggerPenalty -
     metrics.totalHeight * weights.height -
     metrics.holes * weights.holes -
     metrics.topRisk * weights.topRisk -
@@ -73,9 +80,12 @@ export function evaluateTerminal(board: Board, state: SimState, context: AiEvalu
   const metrics = getBoardMetrics(board);
   const stock = totalStock(state.juiceStock);
   const shipment = context.snapshot.shipment.enabled ? calculateShipmentScore(stock, 1) * 0.16 : 0;
+  const potential = context.phase === "chainBuild" ? getChainPotential(board, context.difficulty, context.chainPotentialCache, context.policy.chainPotentialBudget) : EMPTY_CHAIN_POTENTIAL;
   return (
     metrics.adjacentPairs * weights.chainSetup +
     metrics.readyTriples * weights.chainSetup * 4 +
+    potential.bestTriggerChain * weights.chainPotential +
+    potential.triggerOptions * weights.triggerOptions +
     stock * weights.stock +
     shipment * weights.score -
     metrics.totalHeight * weights.height -
@@ -85,10 +95,11 @@ export function evaluateTerminal(board: Board, state: SimState, context: AiEvalu
   );
 }
 
-export function getChainPotential(board: Board, difficulty: DifficultyConfig, cache?: Map<string, ChainPotential>): ChainPotential {
+export function getChainPotential(board: Board, difficulty: DifficultyConfig, cache?: Map<string, ChainPotential>, maxEvaluations = Number.POSITIVE_INFINITY): ChainPotential {
   const key = cache ? boardKey(board) : "";
   const cached = cache?.get(key);
   if (cached) return cached;
+  if (cache && cache.size >= maxEvaluations) return EMPTY_CHAIN_POTENTIAL;
 
   let bestTriggerChain = 0;
   let triggerOptions = 0;

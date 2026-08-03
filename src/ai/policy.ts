@@ -7,6 +7,10 @@ export type AiPolicy = {
   futureDiscount: number;
   dangerTopRisk: number;
   dangerMaxHeight: number;
+  chainPotentialBudget: number;
+  buildTriggerMinChain: number;
+  buildTriggerMinRecordGain: number;
+  prematureTriggerPenalty: number;
 };
 
 export type AiObjectiveWeights = {
@@ -48,6 +52,10 @@ export const DEFAULT_AI_POLICY: AiPolicy = {
   futureDiscount: 0.64,
   dangerTopRisk: 4,
   dangerMaxHeight: 10,
+  chainPotentialBudget: 96,
+  buildTriggerMinChain: 4,
+  buildTriggerMinRecordGain: 2,
+  prematureTriggerPenalty: 2_400,
 };
 
 const BALANCED_WEIGHTS: AiObjectiveWeights = {
@@ -145,10 +153,11 @@ export const AI_MODE_OBJECTIVES: Record<GameModeId, AiModeObjective> = {
     defaultPhase: "chainBuild",
     beamWidth: 4,
     resolvePhase: (context, policy) => {
-      if (isDangerous(context, policy)) return "survive";
+      if (context.topRisk >= 2 || context.maxHeight >= 9) return "survive";
       if ((context.snapshot.challenge.remainingMs ?? 60_000) <= 15_000) return "chainTrigger";
-      const improvesRecord = context.bestImmediateChain > context.snapshot.challenge.runBestChain;
-      if (improvesRecord && context.bestImmediateChain >= Math.max(2, context.bestBuildPotential)) return "chainTrigger";
+      const recordGain = context.bestImmediateChain - context.snapshot.challenge.runBestChain;
+      const meaningfulJump = context.bestImmediateChain >= policy.buildTriggerMinChain && recordGain >= policy.buildTriggerMinRecordGain;
+      if (meaningfulJump && context.bestImmediateChain > context.bestBuildPotential) return "chainTrigger";
       return "chainBuild";
     },
   },

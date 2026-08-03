@@ -1,3 +1,4 @@
+import type { AiSpeed } from "../core";
 import type { AiCommand, AiDecision, AiGameSnapshot, AiRunnerState, AiStrategy } from "./types";
 import type { GameSessionCommandResult } from "../session/gameSession";
 
@@ -8,8 +9,14 @@ type AiRunnerOptions = {
   now?: () => number;
 };
 
-const DEFAULT_INTERVAL_MS = 120;
+const DEFAULT_INTERVAL_MS = 360;
 const MAX_STALLED_COMMANDS = 2;
+
+export function getAiIntervalMs(speed: AiSpeed): number {
+  if (speed === "slow") return 520;
+  if (speed === "fast") return 240;
+  return DEFAULT_INTERVAL_MS;
+}
 
 export class AiRunner {
   private enabled = false;
@@ -76,30 +83,36 @@ export class AiRunner {
       this.queue = [...this.lastDecision.commands];
     }
 
-    const command = this.queue.shift();
-    if (!command || command.kind === "wait") return null;
-    const result = this.options.executeCommand(command);
-    if (commandMadeProgress(command, result)) {
-      this.stalledCommands = 0;
-      return result;
+    let combined: GameSessionCommandResult | null = null;
+    while (this.queue.length > 0) {
+      const command = this.queue.shift();
+      if (!command || command.kind === "wait") continue;
+      const result = this.options.executeCommand(command);
+      combined = mergeResults(combined, result);
+      if (commandMadeProgress(command, result)) {
+        this.stalledCommands = 0;
+      } else {
+        this.stalledCommands += 1;
+      }
+      if (command.kind === "hardDrop" || result?.gameOverRecorded) break;
+      if (this.stalledCommands >= MAX_STALLED_COMMANDS) {
+        this.queue = [];
+        this.stalledCommands = 0;
+        this.lastDecision = {
+          commands: [{ kind: "hardDrop" }],
+          score: -1,
+          reason: "AI unstuck hard drop",
+          evaluatedMoves: 0,
+          chainPotentialEvaluations: 0,
+          mode: render.settings.mode,
+          phase: "survive",
+        };
+        combined = mergeResults(combined, this.options.executeCommand({ kind: "hardDrop" }));
+        break;
+      }
     }
-
-    this.stalledCommands += 1;
-    if (this.stalledCommands >= MAX_STALLED_COMMANDS) {
-      this.queue = [];
-      this.stalledCommands = 0;
-      this.lastDecision = {
-        commands: [{ kind: "hardDrop" }],
-        score: -1,
-        reason: "AI unstuck hard drop",
-        evaluatedMoves: 0,
-        chainPotentialEvaluations: 0,
-        mode: render.settings.mode,
-        phase: "survive",
-      };
-      return this.options.executeCommand({ kind: "hardDrop" });
-    }
-    return result;
+    this.queue = [];
+    return combined;
   }
 
   getState(): AiRunnerState {
@@ -133,4 +146,16 @@ function commandMadeProgress(command: AiCommand, result: GameSessionCommandResul
   if (command.kind === "rotate") return result.sounds.some((cue) => cue.kind === "pop");
   if (command.kind === "useJuice") return result.sounds.some((cue) => cue.kind === "pour");
   return true;
+}
+
+function mergeResults(current: GameSessionCommandResult | null, next: GameSessionCommandResult | null): GameSessionCommandResult | null {
+  if (!next) return current;
+  if (!current) return next;
+  return {
+    sounds: [...current.sounds, ...next.sounds],
+    effects: [...current.effects, ...next.effects],
+    shouldRender: current.shouldRender || next.shouldRender,
+    shouldUpdateHud: current.shouldUpdateHud || next.shouldUpdateHud,
+    gameOverRecorded: current.gameOverRecorded || next.gameOverRecorded,
+  };
 }

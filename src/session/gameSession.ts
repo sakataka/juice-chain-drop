@@ -144,6 +144,7 @@ export class GameSession {
     if (this.game.state !== "playing" || !this.game.active) return NO_RESULT;
     const result = createResult({ shouldUpdateHud: true });
     const report = this.game.hardDrop();
+    this.dropTimer = 0;
     if (report) {
       result.sounds.push({ kind: "tap" });
       this.applyResolveFeedback(report, result);
@@ -318,6 +319,7 @@ export class GameSession {
 
   private applySettleReport(report: ResolveReport | null, result: GameSessionCommandResult): void {
     if (report) {
+      this.dropTimer = 0;
       this.applyResolveFeedback(report, result);
     }
     this.recordCurrentGameOver(result);

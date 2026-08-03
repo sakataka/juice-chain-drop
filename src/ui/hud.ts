@@ -120,7 +120,7 @@ export class HudController {
   update(snapshot: HudSnapshot): void {
     const ai = snapshot.ai ?? {
       enabled: false,
-      intervalMs: 120,
+      intervalMs: 360,
       pendingCommands: 0,
       lastReason: "AI standby",
       mode: null,

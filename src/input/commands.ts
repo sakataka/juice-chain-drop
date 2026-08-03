@@ -1,3 +1,4 @@
+import { createAiGameSnapshot } from "../ai";
 import type { AiCommand, AiGameSnapshot, AiRunnerState } from "../ai";
 import type { AiSpeed, DifficultyId, Fruit, GameModeId, GameState, ProgressionStage } from "../core";
 import type { GameSessionCommandResult } from "../session/gameSession";
@@ -116,28 +117,7 @@ export class GameCommandBus {
   }
 
   createAiSnapshot(): AiGameSnapshot {
-    const render = this.options.session.getRenderSnapshot();
-    const hud = this.options.session.getHudSnapshot();
-    return {
-      board: render.board.map((row) => [...row]),
-      active: render.active ? { kind: render.active.kind, axis: { ...render.active.axis }, satellite: { ...render.active.satellite } } : null,
-      nextPreviews: render.nextPreviews.map((preview) =>
-        preview.kind === "juiceDrop" ? { kind: "juiceDrop", fruit: preview.fruit } : { kind: "fruitPair", pair: [preview.pair[0], preview.pair[1]] },
-      ),
-      state: render.state,
-      score: hud.score,
-      lastChain: hud.lastChain,
-      featuredFruit: hud.featuredFruit,
-      juiceStock: { ...hud.juiceStock },
-      juiceProgress: { ...hud.juiceProgress },
-      shipment: { ...hud.shipment },
-      settings: {
-        mode: hud.settings.mode,
-        difficulty: hud.settings.difficulty,
-        shippingIntervalSeconds: hud.settings.shippingIntervalSeconds,
-      },
-      challenge: this.options.session.getAiChallengeContext(),
-    };
+    return createAiGameSnapshot(this.options.session);
   }
 
   dispatch(command: GameInputCommand, dispatchOptions: DispatchOptions = {}): GameSessionCommandResult | null {

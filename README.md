@@ -170,6 +170,14 @@ bun run test
 bun run test:coverage
 ```
 
+ブラウザ、描画、音を起動せず、ゲームモデルとAIだけで決定論的な長時間検証を行う場合:
+
+```bash
+bun run simulate:ai -- --mode chainChallenge --rounds 100 --seed 1
+```
+
+各ラウンドの終了理由、チェインが伸びた時刻、最大チェイン、判断回数、判断時間、仮想チェイン解析回数を出力します。同じseedは同じNext Drop列になるため、AI変更前後の比較や停止盤面の再現に利用できます。`Chain Challenge` の1ラウンドは仕様どおり60秒で、`challengeComplete` は正常なタイムアップ、`topOut` は盤面上詰まりです。`--json`を付けると5秒ごとの盤面指標、チェイン更新時の盤面、最終盤面を含むJSONを出力します。
+
 E2Eテスト:
 
 ```bash

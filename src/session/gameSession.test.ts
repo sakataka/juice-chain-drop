@@ -66,6 +66,18 @@ describe("GameSession", () => {
     expect(session.softDrop().shouldRender).toBe(true);
   });
 
+  it("starts a fresh gravity interval after a hard drop spawns the next piece", () => {
+    const { session } = createSession({ settings: { ...settings, waterEnabled: false } });
+    session.start();
+    session.tick(DIFFICULTY_CONFIGS.normal.dropInterval - 1);
+    session.hardDrop();
+    const beforeY = session.getRenderSnapshot().active?.axis.y;
+
+    session.tick(1);
+
+    expect(session.getRenderSnapshot().active?.axis.y).toBe(beforeY);
+  });
+
   it("blocks gameplay commands while paused", () => {
     const { session } = createSession();
     session.start();

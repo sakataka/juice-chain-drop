@@ -3,6 +3,7 @@ import { DEFAULT_SHIPMENT_INTERVAL_SECONDS, FRUITS, GameModel } from "../core";
 import type { Board, Cell, Fruit, GameModeId } from "../core";
 import { getChainPotential } from "./evaluation";
 import { enumeratePlacements, heuristicAiStrategy } from "./heuristicStrategy";
+import { DEFAULT_AI_POLICY } from "./policy";
 import { cloneBoard, cloneFruitRecord, clonePreview, nextActiveFromPreviews, simulateJuice, simulatePlacement } from "./simulation";
 import type { AiGameSnapshot } from "./types";
 
@@ -187,7 +188,7 @@ describe("heuristic AI strategy", () => {
     expect(chain.phase).toBe("chainBuild");
     expect(chain.reason).toContain("c0");
     expect(chain.commands).not.toEqual(normal.commands);
-    expect(chain.chainPotentialEvaluations).toBeLessThanOrEqual(enumeratePlacements(game.board, game.active!, game.difficulty).length);
+    expect(chain.chainPotentialEvaluations).toBeLessThanOrEqual(DEFAULT_AI_POLICY.chainPotentialBudget);
   });
 
   it("fires an available chain in the final 15 seconds", () => {

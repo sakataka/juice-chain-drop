@@ -44,6 +44,24 @@ describe("AiRunner", () => {
     expect(session.getRenderSnapshot().active?.axis.x).toBe((before ?? 0) - 1);
   });
 
+  it("executes one placement plan atomically before game time can advance", () => {
+    const { session } = createSession();
+    session.start();
+    const runner = new AiRunner({
+      getSnapshot: () => createAiSnapshot(session),
+      executeCommand: (command) => executeAiCommand(session, command),
+      strategy: scriptedStrategy([{ kind: "rotate" }, { kind: "move", dx: 1 }, { kind: "hardDrop" }]),
+    });
+    runner.setEnabled(true);
+    runner.setIntervalMs(40);
+
+    const result = runner.tick(40);
+
+    expect(result?.sounds.some((cue) => cue.kind === "tap")).toBe(true);
+    expect(runner.getState()).toMatchObject({ decisionCount: 1, pendingCommands: 0 });
+    expect(session.getRenderSnapshot().active?.axis.y).toBe(0);
+  });
+
   it("does not emit commands while disabled", () => {
     const { session } = createSession();
     session.start();
@@ -84,7 +102,6 @@ describe("AiRunner", () => {
     runner.setEnabled(true);
     runner.setIntervalMs(40);
 
-    runner.tick(40);
     const result = runner.tick(40);
 
     expect(result?.sounds.some((cue) => cue.kind === "tap")).toBe(true);
