@@ -16,15 +16,15 @@
   },
   "devDependencies": {
     "@fontsource/fredoka": "^5.3.0",
-    "@playwright/test": "^1.62.1",
-    "@types/bun": "^1.4.0",
+    "@playwright/test": "^1.63.0",
+    "@types/bun": "^1.4.1",
     "typescript": "^7.0.2",
-    "vite": "^8.2.1"
+    "vite": "^8.2.2"
   },
   "dependencies": {
     "jsfxr": "^1.4.1",
     "midi-writer-js": "^3.2.1",
-    "pixi.js": "^8.19.0",
+    "pixi.js": "^8.20.1",
     "tone": "^15.1.22"
   }
 }
