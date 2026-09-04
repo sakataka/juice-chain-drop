@@ -3,24 +3,23 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "packageManager": "bun@1.4.0",
+  "packageManager": "bun@1.4.1",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
     "generate:bgm": "bun scripts/generate-bgm.ts",
     "simulate:ai": "bun scripts/simulate-ai.ts",
     "preview": "vite preview",
-    "test": "vitest run",
-    "test:coverage": "vitest run --coverage",
+    "test": "bun test",
+    "test:coverage": "bun test --coverage",
     "test:e2e": "playwright test"
   },
   "devDependencies": {
     "@fontsource/fredoka": "^5.3.0",
     "@playwright/test": "^1.62.1",
-    "@vitest/coverage-v8": "^4.1.10",
+    "@types/bun": "^1.4.0",
     "typescript": "^7.0.2",
-    "vite": "^8.2.1",
-    "vitest": "^4.1.10"
+    "vite": "^8.2.1"
   },
   "dependencies": {
     "jsfxr": "^1.4.1",

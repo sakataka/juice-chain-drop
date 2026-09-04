@@ -1,23 +1,8 @@
-import { defineConfig } from "vitest/config";
+import { defineConfig } from "vite";
 
 export default defineConfig({
   base: "./",
   build: {
     chunkSizeWarningLimit: 1000,
-  },
-  test: {
-    environment: "node",
-    include: ["src/**/*.test.ts"],
-    coverage: {
-      provider: "v8",
-      include: ["src/core/**/*.ts"],
-      reporter: ["text", "html"],
-      thresholds: {
-        branches: 60,
-        functions: 60,
-        lines: 60,
-        statements: 60,
-      },
-    },
   },
 });

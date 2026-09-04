@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "bun:test";
 import { GameModel } from "../core/game";
 import { DEFAULT_SHIPMENT_INTERVAL_SECONDS, DIFFICULTY_CONFIGS, WATER_GRACE_MS } from "../core";
 import type { Board, Fruit, GameSettings } from "../core";

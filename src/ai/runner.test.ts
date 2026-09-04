@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "bun:test";
 import { FRUITS, GameModel } from "../core";
 import type { Fruit, GameSettings } from "../core";
 import type { PlayerStats } from "../storage/stats";

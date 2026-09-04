@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "bun:test";
 import { DEFAULT_SHIPMENT_INTERVAL_SECONDS, FRUITS, GameModel } from "../core";
 import type { Board, Cell, Fruit, GameModeId } from "../core";
 import { getChainPotential } from "./evaluation";

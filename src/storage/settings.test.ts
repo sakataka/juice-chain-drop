@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "bun:test";
 import { DEFAULT_GAME_SETTINGS, loadGameSettings, saveGameSettings } from "./settings";
 import type { StatsStorage } from "./stats";
 

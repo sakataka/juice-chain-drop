@@ -1,2 +1,5 @@
 [test]
 pathIgnorePatterns = ["e2e/**"]
+coverageThreshold = { line = 0.6, function = 0.6, statement = 0.6 }
+coverageSkipTestFiles = true
+coveragePathIgnorePatterns = ["src/main.ts", "src/renderer/**", "src/sound/**"]

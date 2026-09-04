@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "bun:test";
 import { GAME_MODE_CONFIGS } from "./modes";
 import { createChallengeState, getChallengeSnapshot, updateChallenge } from "./challenge";
 import type { GameSettings } from "./types";

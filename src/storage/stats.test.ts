@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "bun:test";
 import { completePlayerStats, DEFAULT_PLAYER_STATS, loadPlayerStats, savePlayerStats, type StatsStorage } from "./stats";
 
 describe("player stats storage", () => {

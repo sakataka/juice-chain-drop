@@ -1,6 +1,6 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "bun:test";
 import { applyGravity, applyJuiceEffectRules, calculateClearScore, calculateJuiceUseBonus, createBoard, findClearGroups, GameModel, getDifficultyConfig, getPieceCells, getShipmentComboMultiplier, isValidPiece, makePiece, NEXT_QUEUE_SIZE, randomFruit, resolveBoardRules } from "./index";
-import type { Board, Cell, Fruit, PairPiece } from "./types";
+import type { Board, Cell, Fruit, GameState, PairPiece } from "./types";
 
 describe("board rules", () => {
   it("creates a 6 x 12 empty board", () => {
@@ -220,7 +220,7 @@ describe("game model", () => {
     const report = game.settlePiece();
 
     expect(report).toBeNull();
-    expect(game.state).toBe("gameover");
+    expect(game.state as GameState).toBe("gameover");
     expect(game.active).toBeNull();
     expect(game.board[0][2]).toBeNull();
   });
@@ -233,7 +233,7 @@ describe("game model", () => {
     const report = game.settlePiece();
 
     expect(report).toBeNull();
-    expect(game.state).toBe("gameover");
+    expect(game.state as GameState).toBe("gameover");
     expect(game.active).toBeNull();
     expect(game.board[0][0]).toBeNull();
   });
@@ -245,7 +245,7 @@ describe("game model", () => {
 
     game.spawnPiece();
 
-    expect(game.state).toBe("gameover");
+    expect(game.state as GameState).toBe("gameover");
     expect(game.active).toBeNull();
   });
 

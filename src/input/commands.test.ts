@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, mock, type Mock } from "bun:test";
 import { GameModel } from "../core/game";
 import type { AiRunnerState } from "../ai";
 import type { GameSettings } from "../core";
@@ -120,20 +120,20 @@ function createBus(): {
   session: GameSession;
   game: GameModel;
   ai: {
-    setEnabled: ReturnType<typeof vi.fn>;
-    toggle: ReturnType<typeof vi.fn>;
-    setIntervalMs: ReturnType<typeof vi.fn>;
+    setEnabled: Mock<() => void>;
+    toggle: Mock<() => boolean>;
+    setIntervalMs: Mock<() => void>;
     getState: () => AiRunnerState;
   };
   sound: {
-    toggle: ReturnType<typeof vi.fn>;
-    syncGameState: ReturnType<typeof vi.fn>;
-    setSfxVolume: ReturnType<typeof vi.fn>;
-    setBgmVolume: ReturnType<typeof vi.fn>;
+    toggle: Mock<() => void>;
+    syncGameState: Mock<() => void>;
+    setSfxVolume: Mock<() => void>;
+    setBgmVolume: Mock<() => void>;
   };
-  applyResult: ReturnType<typeof vi.fn<(result: GameSessionCommandResult) => void>>;
-  updateHud: ReturnType<typeof vi.fn>;
-  unlockSound: ReturnType<typeof vi.fn>;
+  applyResult: Mock<(result: GameSessionCommandResult) => void>;
+  updateHud: Mock<() => void>;
+  unlockSound: Mock<() => void>;
 } {
   const game = new GameModel();
   const session = new GameSession({
@@ -145,9 +145,9 @@ function createBus(): {
     saveStats: () => undefined,
   });
   const ai = {
-    setEnabled: vi.fn(),
-    toggle: vi.fn(() => true),
-    setIntervalMs: vi.fn(),
+    setEnabled: mock(),
+    toggle: mock(() => true),
+    setIntervalMs: mock(),
     getState: () => ({
       enabled: false,
       intervalMs: 120,
@@ -162,21 +162,21 @@ function createBus(): {
     }),
   };
   const sound = {
-    toggle: vi.fn(),
-    syncGameState: vi.fn(),
-    setSfxVolume: vi.fn(),
-    setBgmVolume: vi.fn(),
+    toggle: mock(),
+    syncGameState: mock(),
+    setSfxVolume: mock(),
+    setBgmVolume: mock(),
   };
-  const applyResult = vi.fn<(result: GameSessionCommandResult) => void>();
-  const updateHud = vi.fn();
-  const unlockSound = vi.fn();
+  const applyResult = mock<(result: GameSessionCommandResult) => void>();
+  const updateHud = mock();
+  const unlockSound = mock();
   const bus = new GameCommandBus({
     session,
     ai,
     sound,
     applyResult,
     updateHud,
-    toggleSettings: vi.fn(),
+    toggleSettings: mock(),
     unlockSound,
     aiIntervalForSpeed: (speed) => (speed === "fast" ? 65 : speed === "slow" ? 220 : 120),
   });
