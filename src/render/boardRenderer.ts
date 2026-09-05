@@ -1,4 +1,4 @@
-import { Container, Graphics, TilingSprite } from "pixi.js";
+import { Container, Graphics, Sprite, TilingSprite } from "pixi.js";
 import { BOARD_X, BOARD_Y, CELL, COLS, HEIGHT, getPieceCells, isFruitCell, isValidPiece, isWaterCell, movedPiece, ROWS, WIDTH } from "../core";
 import type { Board, GameState, NextPiecePreview, PairPiece } from "../core";
 import { addFruitSprite, addJuiceSprite, drawWaterCell, EFFECT_BRASS, EFFECT_CORAL, EFFECT_CREAM, EFFECT_INK, EFFECT_MINT, EFFECT_ORANGE, LAB_DARK, LAB_GRID_A, LAB_GRID_B, LAB_PANEL, replaceLayer, TRAY_WOOD } from "./pixiRenderHelpers";
@@ -18,6 +18,31 @@ type BoardRendererOptions = {
 };
 
 export class BoardRenderer {
+  private previousBoard: Board | null = null;
+  private readonly landings = new Map<string, number>();
+  private bouncing: { sprite: Sprite; width: number; height: number; x: number; y: number; start: number }[] = [];
+
+  clearMotion(): void {
+    this.previousBoard = null;
+    this.landings.clear();
+    this.animate(performance.now() + 1000);
+    this.bouncing = [];
+  }
+
+  animate(now: number): void {
+    for (const item of this.bouncing) {
+      if (item.sprite.destroyed) continue;
+      const t = Math.min(1, (now - item.start) / 280);
+      const squash = Math.sin(t * Math.PI * 3) * Math.pow(1 - t, 2) * 0.22;
+      item.sprite.width = item.width * (1 + squash);
+      item.sprite.height = item.height * (1 - squash);
+      item.sprite.x = item.x - (item.sprite.width - item.width) / 2;
+      item.sprite.y = item.y + item.height - item.sprite.height;
+    }
+    this.bouncing = this.bouncing.filter((item) => !item.sprite.destroyed && now - item.start < 280);
+    for (const [key, start] of this.landings) if (now - start >= 280) this.landings.delete(key);
+  }
+
   constructor(private readonly options: BoardRendererOptions) {}
 
   drawBackground(): void {
@@ -63,7 +88,9 @@ export class BoardRenderer {
     });
   }
 
-  drawBoard(board: Board): void {
+  drawBoard(board: Board, motion = true): void {
+    const now = performance.now();
+    this.bouncing = [];
     const { board: boardLayer } = this.options.layers;
     replaceLayer(boardLayer, () => {
       const panel = new Graphics();
@@ -102,13 +129,19 @@ export class BoardRenderer {
         for (let x = 0; x < COLS; x += 1) {
           const cell = board[y][x];
           if (isFruitCell(cell)) {
-            addFruitSprite(this.options.textures, boardLayer, cell, BOARD_X + x * CELL + 4, BOARD_Y + y * CELL + 4, CELL - 8, 1);
+            const sprite = addFruitSprite(this.options.textures, boardLayer, cell, BOARD_X + x * CELL + 4, BOARD_Y + y * CELL + 4, CELL - 8, 1);
+            const key = `${x},${y}`;
+            if (motion && this.previousBoard && this.previousBoard[y][x] !== cell) this.landings.set(key, now);
+            const start = this.landings.get(key);
+            if (motion && sprite && start !== undefined) this.bouncing.push({ sprite, width: sprite.width, height: sprite.height, x: sprite.x, y: sprite.y, start });
           } else if (isWaterCell(cell)) {
             drawWaterCell(this.options.textures, boardLayer, x, y, 1);
           }
         }
       }
     });
+    this.previousBoard = board.map((row) => [...row]);
+    this.animate(now);
   }
 
   drawGhost(board: Board, active: PairPiece | null, state: GameState): void {

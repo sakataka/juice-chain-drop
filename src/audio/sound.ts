@@ -71,6 +71,7 @@ export class SoundEngine {
   tap(): void {
     if (!this.canPlay()) return;
     this.playSfx("tap", { gain: 0.025, playbackRate: 1.12 });
+    this.liquidNote(240, 0, 0.12, 0.12);
   }
 
   whoosh(strength = 0.35): void {
@@ -81,6 +82,8 @@ export class SoundEngine {
   splash(chain: number, fruit: Fruit): void {
     if (!this.canPlay()) return;
     const capped = Math.min(4, chain);
+    this.liquidNote(340 * fruitPlaybackRate(fruit), 0, 0.17, 0.22);
+    this.liquidNote(510 * fruitPlaybackRate(fruit), 0.075, 0.12, 0.12);
     const fruitPitch = fruitPlaybackRate(fruit);
     this.playSfx("splash", { gain: 0.72 + capped * 0.05, playbackRate: fruitPitch * (0.88 + capped * 0.03) });
     if (chain >= 2) {
@@ -105,7 +108,10 @@ export class SoundEngine {
 
   pour(): void {
     if (!this.canPlay()) return;
-    this.playSfx("pour");
+    this.playSfx("pour", { gain: 0.65 });
+    this.liquidNote(320, 0, 0.16, 0.18);
+    this.liquidNote(440, 0.1, 0.14, 0.15);
+    this.liquidNote(680, 0.22, 0.12, 0.12);
   }
 
   shipment(totalStock: number): void {
@@ -188,6 +194,27 @@ export class SoundEngine {
       if (this.sfxBuffers[key]) continue;
       this.sfxBuffers[key] = sfxr.toWebAudio(SFX_DEFINITIONS[key], this.sfxContext).buffer ?? undefined;
     }
+  }
+
+  // A short downward resonant glide gives existing cues a rounded liquid body.
+  // Uses the same output gain, mute and unlock boundary as the synthesized SFX.
+  private liquidNote(frequency: number, delay: number, duration: number, volume: number): void {
+    if (!this.sfxContext || !this.sfxOutput) return;
+    const oscillator = this.sfxContext.createOscillator();
+    const envelope = this.sfxContext.createGain();
+    const at = this.sfxContext.currentTime + delay;
+    oscillator.type = "sine";
+    oscillator.frequency.setValueAtTime(frequency * 1.9, at);
+    oscillator.frequency.exponentialRampToValueAtTime(frequency, at + duration * 0.2);
+    oscillator.frequency.exponentialRampToValueAtTime(frequency * 0.55, at + duration);
+    envelope.gain.setValueAtTime(0, at);
+    envelope.gain.linearRampToValueAtTime(volume, at + 0.008);
+    envelope.gain.exponentialRampToValueAtTime(0.001, at + duration);
+    oscillator.connect(envelope);
+    envelope.connect(this.sfxOutput);
+    oscillator.start(at);
+    oscillator.stop(at + duration);
+    oscillator.onended = () => { oscillator.disconnect(); envelope.disconnect(); };
   }
 
   private playSfx(key: SfxKey, options: { delay?: number; gain?: number; playbackRate?: number } = {}): void {

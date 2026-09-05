@@ -47,6 +47,7 @@ export class PixiGameRenderer {
     textures: this.textures,
   });
   private ready = false;
+  private reducedMotion = false;
 
   constructor(
     private readonly gameCanvas: HTMLCanvasElement,
@@ -79,17 +80,28 @@ export class PixiGameRenderer {
     this.gameApp.stage.addChild(this.backgroundLayer, this.boardLayer, this.ghostLayer, this.activeLayer, this.effectsLayer);
     this.nextApp.stage.addChild(this.nextLayer);
     this.boardRenderer.drawBackground();
-    this.gameApp.ticker.add(() => this.visualEffectsRenderer.draw(performance.now()));
+    this.gameApp.ticker.add(() => {
+      const now = performance.now();
+      this.visualEffectsRenderer.draw(now);
+      this.boardRenderer.animate(now);
+    });
     this.ready = true;
   }
 
+  setReducedMotion(enabled: boolean): void {
+    if (enabled === this.reducedMotion) return;
+    this.reducedMotion = enabled;
+    if (enabled) this.clearEffects();
+  }
+
   clearEffects(): void {
+    this.boardRenderer.clearMotion();
     this.visualEffectsRenderer.clear();
   }
 
   render(snapshot: RenderSnapshot): void {
     if (!this.ready) return;
-    this.boardRenderer.drawBoard(snapshot.board);
+    this.boardRenderer.drawBoard(snapshot.board, !this.reducedMotion);
     this.boardRenderer.drawGhost(snapshot.board, snapshot.active, snapshot.state);
     this.boardRenderer.drawActivePiece(snapshot.active);
     this.boardRenderer.drawNextQueue(snapshot.nextPreviews);

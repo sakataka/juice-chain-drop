@@ -627,7 +627,7 @@ h2 {
 
 .status-card--score {
   grid-column: 1 / -1;
-  min-height: 116px;
+  min-height: 88px;
   border-color: rgba(202, 130, 36, 0.6);
   background:
     radial-gradient(circle at 12% 10%, rgba(255, 183, 53, 0.3), transparent 32%),
@@ -691,7 +691,7 @@ h2 {
   margin-top: 6px;
   overflow: visible;
   color: #a04c08;
-  font-size: 4.05rem;
+  font-size: 3.25rem;
   font-variant-numeric: tabular-nums;
   line-height: 0.9;
   text-shadow:
@@ -885,118 +885,138 @@ h2 {
 
 .press-tank {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 7px;
-  padding: 8px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  padding: 10px;
+  background: linear-gradient(160deg, #293c30eb, #162820f5);
+  border-color: #d9a44a66;
 }
 
 .press-lane {
   --accent: var(--orange);
+  position: relative;
   min-width: 0;
-  min-height: 72px;
   display: grid;
-  grid-template-columns: 35px 10px 39px minmax(0, 1fr) auto;
-  grid-template-rows: minmax(42px, auto) 8px;
-  gap: 5px 3px;
+  grid-template-columns: 1fr auto;
+  justify-items: center;
   align-items: center;
-  padding: 7px;
-  border: 1px solid rgba(146, 100, 44, 0.3);
-  border-left: 5px solid var(--accent);
-  border-radius: 8px;
-  background:
-    radial-gradient(circle at 30% 24%, color-mix(in srgb, var(--accent), transparent 82%), transparent 48%),
-    linear-gradient(180deg, rgba(255, 252, 238, 0.9), rgba(240, 221, 175, 0.92));
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.68), 0 7px 14px rgba(24, 11, 3, 0.18);
+  gap: 4px;
+  padding: 8px 6px;
+  border: 1px solid #e7d4a72e;
+  border-radius: 12px;
+  background: radial-gradient(ellipse at 50% 35%, color-mix(in srgb, var(--accent), transparent 88%), transparent 75%), #ffffff08;
+  box-shadow: inset 0 1px 0 #ffffff19, 0 5px 10px #00000020;
+  transition: background 180ms, border-color 180ms;
+}
+
+.press-lane.has-bottle {
+  border-color: color-mix(in srgb, var(--accent), #fff3bd 40%);
+  box-shadow: inset 0 0 16px color-mix(in srgb, var(--accent), transparent 85%), 0 0 12px color-mix(in srgb, var(--accent), transparent 85%);
+}
+
+.press-bottle {
+  position: relative;
+  grid-column: 1 / -1;
+  display: block;
+  width: 78px;
+  height: 78px;
+  transform-origin: 50% 85%;
+}
+
+.press-bottle-empty,
+.press-bottle-fill {
+  position: absolute;
+  inset: 0;
+  background-repeat: no-repeat;
+}
+
+.press-bottle-empty {
+  filter: grayscale(1) brightness(1.65);
+  opacity: .24;
+}
+
+.press-bottle-fill {
+  clip-path: inset(100% 0 0 0);
+  filter: drop-shadow(0 0 6px color-mix(in srgb, var(--accent), transparent 50%));
+  transition: clip-path 360ms cubic-bezier(.2,.7,.2,1);
 }
 
 .press-fruit-icon,
-.press-juice-icon {
+.press-juice-icon,
+.juice-flight {
   display: block;
   background-repeat: no-repeat;
   background-size: 600% 100%;
-  background-origin: content-box;
-  background-clip: content-box;
-  filter: drop-shadow(0 5px 7px rgba(63, 36, 14, 0.25));
 }
 
 .press-fruit-icon {
-  width: 35px;
-  height: 35px;
+  position: absolute;
+  top: 6px;
+  left: 4px;
+  width: 26px;
+  height: 26px;
+  opacity: .85;
 }
 
 .press-juice-icon {
-  width: 39px;
-  height: 39px;
-  filter: drop-shadow(0 0 7px color-mix(in srgb, var(--accent), transparent 48%)) drop-shadow(0 5px 7px rgba(63, 36, 14, 0.22));
+  position: absolute;
+  right: 2px;
+  top: 18px;
+  width: 32px;
+  height: 32px;
+  opacity: 0;
+  transform: rotate(12deg);
 }
 
-.press-flow {
-  color: color-mix(in srgb, var(--accent), #3f240e 30%);
-  font-family: Fredoka, ui-sans-serif, system-ui, sans-serif;
-  font-size: 1.28rem;
-  font-weight: 700;
-  text-align: center;
-}
+.has-bottle .press-juice-icon { opacity: 1; }
 
 .press-copy {
+  grid-column: 1 / -1;
   min-width: 0;
   display: grid;
-  gap: 3px;
+  gap: 5px;
+  text-align: center;
 }
 
 .press-copy strong,
 .press-progress {
-  overflow: hidden;
-  color: var(--ink-dark);
+  color: #fff1d5;
   font-family: Fredoka, ui-sans-serif, system-ui, sans-serif;
-  font-size: 0.78rem;
-  line-height: 1;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  font-size: .86rem;
+  line-height: 1.15;
 }
 
 .press-copy small {
   overflow: hidden;
-  color: var(--paper-ink-soft);
-  font-size: 0.48rem;
-  font-weight: 900;
-  letter-spacing: 0.035em;
-  line-height: 1.05;
+  color: #d4d9bd;
+  font-size: .53rem;
+  font-weight: 800;
+  letter-spacing: .025em;
+  line-height: 1.2;
   text-overflow: ellipsis;
   text-transform: uppercase;
   white-space: nowrap;
 }
 
-.press-copy small.is-ready {
-  color: #0d785b;
-  text-shadow: 0 0 7px rgba(57, 240, 194, 0.34);
-}
+.press-copy small.is-ready { color: #b8ffc9; }
 
 .press-progress {
-  justify-self: end;
-  font-size: 0.7rem;
+  grid-column: 1 / -1;
+  font-size: .66rem;
+  color: #e0cba1;
   font-variant-numeric: tabular-nums;
 }
 
-.press-meter {
-  grid-column: 1 / -1;
-  height: 8px;
-  overflow: hidden;
-  border: 1px solid rgba(92, 57, 22, 0.36);
-  border-radius: 999px;
-  background: rgba(87, 55, 24, 0.18);
-  box-shadow: inset 0 1px 2px rgba(63, 36, 14, 0.22);
+.juice-flight {
+  position: fixed;
+  width: 32px;
+  height: 32px;
+  z-index: 20;
+  pointer-events: none;
+  filter: drop-shadow(0 0 6px #ffe5a6);
 }
 
-.press-meter-fill {
-  width: 0;
-  height: 100%;
-  display: block;
-  border-radius: inherit;
-  background: linear-gradient(90deg, color-mix(in srgb, var(--accent), #fff 12%), var(--accent));
-  box-shadow: 0 0 9px color-mix(in srgb, var(--accent), transparent 28%);
-  transition: width 180ms ease-out;
-}
+html[data-reduced-effects="true"] .press-bottle-fill { transition: none; }
 
 .field-row {
   display: grid;
@@ -1416,25 +1436,9 @@ h2 {
     padding: 8px;
   }
 
-  .press-lane {
-    grid-template-columns: 32px 8px 36px minmax(0, 1fr) auto;
-    min-height: 68px;
-    padding: 6px;
-  }
-
-  .press-copy small {
-    font-size: 0.5rem;
-  }
-
-  .press-fruit-icon {
-    width: 32px;
-    height: 32px;
-  }
-
-  .press-juice-icon {
-    width: 36px;
-    height: 36px;
-  }
+  .press-bottle { width: 64px; height: 64px; }
+  .press-tank { gap: 5px; padding: 6px; }
+  .press-copy small { font-size: .5rem; }
 
   .field-row,
   .range-row {
@@ -1497,7 +1501,6 @@ h2 {
     text-shadow: 0 0 18px rgba(57, 240, 194, 0.24);
   }
 
-  .press-lane,
   .juice-button {
     background:
       radial-gradient(circle at 30% 24%, color-mix(in srgb, var(--accent), transparent 84%), transparent 48%),
@@ -1593,7 +1596,7 @@ h2 {
     transform: none;
   }
 
-  .press-meter-fill {
+  .press-bottle-fill {
     transition: none;
   }
 }

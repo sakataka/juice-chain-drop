@@ -33,6 +33,7 @@ export type VisualEffect =
     }
   | {
       kind: "clearPop";
+      fruit: Fruit;
       start: number;
       duration: number;
       cells: GridPosition[];

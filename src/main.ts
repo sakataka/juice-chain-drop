@@ -39,6 +39,8 @@ declare global {
   }
 }
 
+const motionPreference = matchMedia("(prefers-reduced-motion: reduce)");
+motionPreference.addEventListener("change", () => updateHud());
 const gameCanvas = getElement<HTMLCanvasElement>("#gameCanvas");
 const nextCanvas = getElement<HTMLCanvasElement>("#nextCanvas");
 const sound = new SoundEngine();
@@ -89,9 +91,12 @@ const soundCueHandlers: SoundCueHandlers = {
 };
 
 const visualEffectCueHandlers: VisualEffectCueHandlers = {
-  clearEffects: () => renderer.clearEffects(),
+  clearEffects: () => { renderer.clearEffects(); hud?.motion.clear(); },
   juiceSplash: (cue) => renderer.spawnJuiceSplash(cue.effect, cue.primary),
-  clearPop: (cue) => renderer.spawnClearPop(cue.cells, cue.fruit, cue.chain),
+  clearPop: (cue) => {
+    renderer.spawnClearPop(cue.cells, cue.fruit, cue.chain);
+    hud.collectJuice(cue.cells, cue.fruit);
+  },
   waterDrop: (cue) => renderer.spawnWaterDrop(cue.cell),
   waterClear: (cue) => renderer.spawnWaterClear(cue.cells),
   shipment: (cue) => renderer.spawnShipment(cue.report),
@@ -207,13 +212,14 @@ function playVisualEffect(cue: VisualEffectCue): void {
     visualEffectCueHandlers.clearEffects(cue);
     return;
   }
-  if (session.getSettings().reducedMotion) return;
+  if (session.getSettings().reducedMotion || motionPreference.matches) return;
   const handler = visualEffectCueHandlers[cue.kind];
   if (!handler) return assertNever(cue as never);
   handler(cue as never);
 }
 
 function updateHud(): void {
+  renderer.setReducedMotion(session.getSettings().reducedMotion || motionPreference.matches);
   hud.update({ ...session.getHudSnapshot(), ai: aiRunner.getState() });
 }
 

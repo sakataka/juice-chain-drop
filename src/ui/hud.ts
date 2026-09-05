@@ -1,7 +1,8 @@
+import { JuiceMotion } from "./juiceMotion";
 import fruitStripUrl from "../assets/sprites/lab/fruits-v2.png";
 import juiceStripUrl from "../assets/sprites/lab/juices-v2.png";
 import { DIFFICULTY_CONFIGS, FRUIT_COLORS, FRUIT_LABEL, FRUITS, GAME_MODE_CONFIGS, JUICE_EFFECT_LABEL } from "../core";
-import type { AiSpeed, DifficultyId, Fruit, FruitRecord, GameModeId, GameSettings, GameState, JuiceOrder } from "../core";
+import type { AiSpeed, DifficultyId, Fruit, FruitRecord, GameModeId, GameSettings, GameState, GridPosition, JuiceOrder } from "../core";
 import type { AiRunnerState } from "../ai";
 import type { PlayerStats } from "../storage/stats";
 
@@ -57,6 +58,9 @@ type PressLaneElements = {
   fruitIcon: HTMLElement;
   juiceIcon: HTMLElement;
   fill: HTMLElement;
+  bottle: HTMLElement;
+  lastProgress: number;
+  lastQueued: number;
   progress: HTMLElement;
   queued: HTMLElement;
 };
@@ -64,6 +68,7 @@ type PressLaneElements = {
 const SPRITE_BACKGROUND_SIZE = "600% 100%";
 
 export class HudController {
+  readonly motion = new JuiceMotion();
   private readonly scoreValue = getElement<HTMLElement>("#scoreValue");
   private readonly chainValue = getElement<HTMLElement>("#chainValue");
   private readonly bestScoreValue = getElement<HTMLElement>("#bestScoreValue");
@@ -132,6 +137,10 @@ export class HudController {
       maxDecisionMs: 0,
       chainPotentialEvaluations: 0,
     };
+    const reduced = snapshot.settings.reducedMotion || matchMedia("(prefers-reduced-motion: reduce)").matches;
+    this.motion.enabled = !reduced && snapshot.state !== "paused" && snapshot.state !== "gameover";
+    document.documentElement.dataset.reducedEffects = String(reduced);
+    if (!this.motion.enabled) this.motion.clear();
     const juiceThreshold = DIFFICULTY_CONFIGS[snapshot.settings.difficulty].juiceThreshold;
     this.scoreValue.textContent = snapshot.score.toLocaleString();
     this.scoreValue.dataset.scoreSize = getScoreSize(snapshot.score);
@@ -183,11 +192,26 @@ export class HudController {
       elements.lane.setAttribute("aria-label", `${FRUIT_LABEL[fruit]} press ${progress} of ${juiceThreshold}; ${queued} bottle${queued === 1 ? "" : "s"} queued`);
       elements.lane.setAttribute("aria-valuenow", String(progress));
       elements.lane.setAttribute("aria-valuemax", String(juiceThreshold));
-      elements.fill.style.width = `${ratio * 100}%`;
+      elements.fill.style.clipPath = `inset(${(1 - ratio) * 100}% 0 0 0)`;
+      elements.lane.classList.toggle("has-juice", progress > 0);
+      elements.lane.classList.toggle("has-bottle", queued > 0);
+      if (queued > elements.lastQueued) {
+        this.motion.pulse(elements.bottle, true);
+        this.motion.toNext(elements.juiceIcon);
+      } else if (progress > elements.lastProgress) {
+        this.motion.pulse(elements.bottle, false);
+      }
+      elements.lastProgress = progress;
+      elements.lastQueued = queued;
       elements.progress.textContent = `${progress}/${juiceThreshold}`;
       elements.queued.textContent = queued > 0 ? `NEXT ×${queued}` : JUICE_EFFECT_LABEL[fruit].replace(`${FRUIT_LABEL[fruit]}: `, "");
       elements.queued.classList.toggle("is-ready", queued > 0);
     }
+  }
+
+  collectJuice(cells: GridPosition[], fruit: Fruit): void {
+    const lane = this.pressLanes.get(fruit);
+    if (lane) this.motion.collect(cells, lane.juiceIcon);
   }
 
   toggleSettings(): void {
@@ -206,26 +230,23 @@ function createPressLane(fruit: Fruit): PressLaneElements {
   lane.setAttribute("aria-valuemin", "0");
 
   const fruitIcon = createSpriteIcon(fruit, fruitStripUrl, "press-fruit-icon");
-  const flow = document.createElement("span");
-  flow.className = "press-flow";
-  flow.textContent = "›";
-  flow.setAttribute("aria-hidden", "true");
   const juiceIcon = createSpriteIcon(fruit, juiceStripUrl, "press-juice-icon");
+  const bottle = document.createElement("span");
+  bottle.className = "press-bottle";
+  bottle.setAttribute("aria-hidden", "true");
+  const empty = createSpriteIcon(fruit, juiceStripUrl, "press-bottle-empty");
+  const fill = createSpriteIcon(fruit, juiceStripUrl, "press-bottle-fill");
+  bottle.append(empty, fill);
   const copy = document.createElement("span");
   copy.className = "press-copy";
   const label = document.createElement("strong");
   label.textContent = FRUIT_LABEL[fruit];
   const queued = document.createElement("small");
   copy.append(label, queued);
-  const meter = document.createElement("span");
-  meter.className = "press-meter";
-  const fill = document.createElement("span");
-  fill.className = "press-meter-fill";
-  meter.append(fill);
   const progress = document.createElement("b");
   progress.className = "press-progress";
-  lane.append(fruitIcon, flow, juiceIcon, copy, meter, progress);
-  return { lane, fruitIcon, juiceIcon, fill, progress, queued };
+  lane.append(bottle, fruitIcon, copy, juiceIcon, progress);
+  return { lane, fruitIcon, juiceIcon, fill, bottle, progress, queued, lastProgress: 0, lastQueued: 0 };
 }
 
 function createSpriteIcon(fruit: Fruit, url: string, className: string): HTMLElement {

@@ -3,6 +3,7 @@ import { BOARD_X, BOARD_Y, CELL, COLS, FRUIT_COLORS, ROWS, WIDTH, HEIGHT } from 
 import type { Fruit, GridPosition, JuiceEffectResult, ProgressionStage, ShipmentReport } from "../core";
 import {
   addEffectSprite,
+  addFruitSprite,
   addSplashSprite,
   clamp01,
   createParticles,
@@ -72,6 +73,7 @@ export class VisualEffectsRenderer {
     const color = hexToNumber(FRUIT_COLORS[fruit]);
     this.effects.push({
       kind: "clearPop",
+      fruit,
       start: performance.now(),
       duration: 540 + intensity * 150,
       cells: sampleCells,
@@ -214,7 +216,20 @@ export class VisualEffectsRenderer {
 
   private drawClearPopEffect(effect: Extract<VisualEffect, { kind: "clearPop" }>, elapsed: number, progress: number): void {
     const graphics = new Graphics();
-    const burst = easeOut(progress);
+    const squeeze = clamp01(elapsed / 100);
+    if (squeeze < 1) {
+      for (const cell of effect.cells) {
+        const point = gridToCanvas(cell);
+        const sprite = addFruitSprite(this.options.textures, this.options.layer, effect.fruit, point.x - CELL / 2 + 4, point.y - CELL / 2 + 4, CELL - 8, 1 - squeeze * 0.3);
+        if (sprite) {
+          sprite.width *= 1 + squeeze * 0.15;
+          sprite.height *= 1 - squeeze * 0.4;
+          sprite.y += CELL * squeeze * 0.18;
+        }
+      }
+      return;
+    }
+    const burst = easeOut(clamp01((elapsed - 100) / (effect.duration - 100)));
     const isBigChain = effect.chain >= 3;
     const boardCenterX = BOARD_X + (COLS * CELL) / 2;
     const boardCenterY = BOARD_Y + (ROWS * CELL) / 2;

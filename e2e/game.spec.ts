@@ -230,3 +230,34 @@ test("shows keyboard focus and honors dark and reduced-motion preferences", asyn
   const panelAnimationDuration = await page.locator("#settingsPanel").evaluate((panel) => Number.parseFloat(getComputedStyle(panel).animationDuration));
   expect(panelAnimationDuration).toBeLessThan(0.01);
 });
+
+test("keeps bottled stock distinct from the next bottle's fill and resets on restart", async ({ page }) => {
+  await page.setViewportSize({ width: 420, height: 912 });
+  await page.goto("/?testMode=1&testPress=apple");
+  await page.getByRole("button", { name: "Start" }).click();
+  const apple = page.locator('.press-lane[data-fruit="apple"]');
+  await expect(apple).toHaveClass(/has-bottle/);
+  await expect(apple).toHaveAttribute("aria-valuenow", "0");
+  await expect(apple.locator(".press-juice-icon")).toHaveCSS("opacity", "1");
+  await expect(apple.locator(".press-progress")).toHaveText("0/4");
+  await page.getByRole("button", { name: "Restart" }).click();
+  await expect(apple).not.toHaveClass(/has-bottle/);
+  await expect(page.locator(".juice-flight")).toHaveCount(0);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+});
+
+test("suppresses bottle motion for both OS and in-game reduced effects", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto("/?testMode=1&testPress=apple");
+  await page.getByRole("button", { name: "Start" }).click();
+  await expect(page.locator("html")).toHaveAttribute("data-reduced-effects", "true");
+  await expect(page.locator(".juice-flight")).toHaveCount(0);
+  expect(await page.locator(".press-bottle").evaluateAll((bottles) => bottles.flatMap((bottle) => bottle.getAnimations()).length)).toBe(0);
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  await expect(page.locator("html")).toHaveAttribute("data-reduced-effects", "false");
+  await page.getByRole("button", { name: "Settings" }).click();
+  await page.getByLabel("Reduced Effects").check();
+  await expect(page.locator("html")).toHaveAttribute("data-reduced-effects", "true");
+  await expect(page.locator(".press-bottle-fill").first()).toHaveCSS("transition-duration", "0s");
+  await expect(page.locator(".juice-flight")).toHaveCount(0);
+});

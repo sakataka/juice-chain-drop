@@ -3,7 +3,7 @@ import { BOARD_X, BOARD_Y, CELL } from "../core";
 import type { Fruit, GridPosition } from "../core";
 import type { Particle, PixiRenderTextures } from "./renderTypes";
 
-const FRUIT_DRAW_SCALE = 0.96;
+const FRUIT_DRAW_SCALE = 1.12;
 export const EFFECT_CREAM = 0xfff1bd;
 export const EFFECT_MINT = 0x39f0c2;
 export const EFFECT_ORANGE = 0xff9f2e;
@@ -12,8 +12,8 @@ export const EFFECT_INK = 0x2a1708;
 export const EFFECT_BRASS = 0xd9a44a;
 export const LAB_DARK = 0x241307;
 export const LAB_PANEL = 0x33200e;
-export const LAB_GRID_A = 0x2c1b0c;
-export const LAB_GRID_B = 0x3a2511;
+export const LAB_GRID_A = 0x1c2924;
+export const LAB_GRID_B = 0x23332b;
 export const TRAY_WOOD = 0xf2a23b;
 
 export function replaceLayer(layer: Container, draw: () => void): void {
@@ -21,7 +21,7 @@ export function replaceLayer(layer: Container, draw: () => void): void {
   draw();
 }
 
-export function addFruitSprite(textures: PixiRenderTextures, layer: Container, fruit: Fruit, x: number, y: number, size: number, alpha: number, tint?: number): void {
+export function addFruitSprite(textures: PixiRenderTextures, layer: Container, fruit: Fruit, x: number, y: number, size: number, alpha: number, tint?: number): Sprite | undefined {
   const texture = textures.fruit.get(fruit);
   if (!texture) return;
   const sprite = new Sprite(texture);
@@ -39,6 +39,7 @@ export function addFruitSprite(textures: PixiRenderTextures, layer: Container, f
     sprite.tint = tint;
   }
   layer.addChild(sprite);
+  return sprite;
 }
 
 export function addJuiceSprite(textures: PixiRenderTextures, layer: Container, fruit: Fruit, x: number, y: number, size: number, alpha: number): void {
