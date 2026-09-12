@@ -1,6 +1,6 @@
 ---
 name: juice-chain-promo-video
-description: Update or recreate the Juice Chain Drop promotional video when the game UI, features, rules, README GIF preview, screenshots, HyperFrames composition, or MP4 artifact need to reflect the current product. Use for requests like "今の機能に合わせて動画を作って", "紹介動画を更新して", "README用のGIFを作って", or "ゲーム画面を撮って動画を書き出して".
+description: Create or update the Juice Chain Drop promotional video, video screenshots, or GIF preview when requested. A game UI or rules change alone does not request a video update.
 ---
 
 # Juice Chain Drop Promo Video
@@ -23,7 +23,7 @@ Use this skill to keep the repository's short promo video aligned with the curre
 1. Read `README.md`, recent relevant source changes, and `video/README.md` to understand the current product pitch.
 2. If game visuals or features changed, update the storyboard/copy inside `video/index.html`; keep the video around 15 seconds unless the user asks otherwise.
 3. Keep the game screen prominent. Use short Japanese captions and avoid long technical explanations.
-4. Run the standard update pipeline:
+4. For a complete video update, run the standard pipeline. For screenshot-only or GIF-only requests, use the corresponding `capture` or `gif` script and return only the requested output:
 
 ```bash
 cd video
@@ -39,7 +39,7 @@ cd video
 bun run promo:update:no-capture
 ```
 
-5. Also run repository checks from the root:
+5. Run repository checks from the root only when game code or shared build inputs also changed:
 
 ```bash
 bun run build
@@ -54,9 +54,9 @@ bun run test
 
 ## Completion checklist
 
-- `video/output/fruit-puzzle-promo.mp4` was rendered locally and is about 15 seconds unless otherwise requested, but remains ignored by Git.
+- When a video was requested, `video/output/fruit-puzzle-promo.mp4` was rendered locally and is about 15 seconds unless otherwise requested, but remains ignored by Git.
 - `video/output/fruit-puzzle-promo.gif` exists for local preview when generation was requested, but remains ignored by Git.
-- `bun run lint` in `video/` reports zero warnings after filtering.
-- `bun run inspect` in `video/` reports zero layout issues.
-- `bun run build` and `bun run test` pass at repository root.
+- For composition changes, `bun run lint` and `bun run inspect` in `video/` pass. Reuse the successful pipeline checks on unchanged final inputs.
+- Root `bun run build` and `bun run test` pass when game code or shared build inputs changed.
+- Documentation-only changes need wording, reference, and diff review, not a media render.
 - Final response includes output path, commands, and any remaining limitations.
