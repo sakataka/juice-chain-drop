@@ -141,9 +141,9 @@ export class AiRunner {
 
 function commandMadeProgress(command: AiCommand, result: GameSessionCommandResult | null): boolean {
   if (!result) return false;
-  if (command.kind === "hardDrop") return result.sounds.some((cue) => cue.kind === "tap" || cue.kind === "whoosh") || result.gameOverRecorded;
-  if (command.kind === "move") return result.sounds.some((cue) => cue.kind === "tick");
-  if (command.kind === "rotate") return result.sounds.some((cue) => cue.kind === "pop");
+  if (command.kind === "hardDrop") return result.sounds.some((cue) => cue.kind === "land" || cue.kind === "softDrop") || result.gameOverRecorded;
+  if (command.kind === "move") return result.sounds.some((cue) => cue.kind === "move");
+  if (command.kind === "rotate") return result.sounds.some((cue) => cue.kind === "rotate");
   return true;
 }
 

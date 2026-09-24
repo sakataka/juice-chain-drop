@@ -34,7 +34,7 @@ describe("GameCommandBus", () => {
 
     expect(unlockSound).toHaveBeenCalledTimes(1);
     expect(ai.setEnabled).toHaveBeenCalledWith(false);
-    expect(result?.sounds).toContainEqual({ kind: "tick" });
+    expect(result?.sounds).toContainEqual({ kind: "move" });
     expect(session.getRenderSnapshot().active?.axis.x).toBe((beforeX ?? 0) - 1);
     expect(applyResult).toHaveBeenCalledWith(result);
     expect(updateHud).toHaveBeenCalled();
@@ -88,7 +88,7 @@ describe("GameCommandBus", () => {
     const result = bus.dispatchAiCommand({ kind: "move", dx: 1 });
 
     expect(ai.setEnabled).not.toHaveBeenCalledWith(false);
-    expect(result?.sounds).toContainEqual({ kind: "tick" });
+    expect(result?.sounds).toContainEqual({ kind: "move" });
     expect(session.getRenderSnapshot().active?.axis.x).toBe((beforeX ?? 0) + 1);
     expect(applyResult).toHaveBeenCalledWith(result);
     expect(updateHud).not.toHaveBeenCalled();

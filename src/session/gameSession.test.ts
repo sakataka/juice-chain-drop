@@ -34,9 +34,9 @@ describe("GameSession", () => {
 
     expect(start.effects).toContainEqual({ kind: "clearEffects" });
     expect(start.sounds).toContainEqual({ kind: "bgmContext", mode: "normal", moment: "flow" });
-    expect(move.sounds).toContainEqual({ kind: "tick" });
-    expect(rotate.sounds).toContainEqual({ kind: "pop" });
-    expect(hardDrop.sounds.map((cue) => cue.kind)).toContain("tap");
+    expect(move.sounds).toContainEqual({ kind: "move" });
+    expect(rotate.sounds).toContainEqual({ kind: "rotate" });
+    expect(hardDrop.sounds.map((cue) => cue.kind)).toContain("land");
     expect(session.getRenderSnapshot().state).toBe("playing");
   });
 
@@ -50,7 +50,7 @@ describe("GameSession", () => {
     expect(bottleReady.sounds).toContainEqual({ kind: "bgmContext", mode: "normal", moment: "juiceDrop" });
     const result = session.hardDrop();
 
-    expect(result.sounds).toContainEqual({ kind: "pour" });
+    expect(result.sounds).toContainEqual({ kind: "bottleBurst" });
     expect(result.effects.some((effect) => effect.kind === "juiceSplash" && effect.primary === "apple")).toBe(true);
     expect(result.sounds).toContainEqual({ kind: "bgmContext", mode: "normal", moment: "flow" });
     expect(session.getHudSnapshot().juiceDropsCreated).toBe(1);
@@ -148,11 +148,11 @@ describe("GameSession", () => {
 
     const firstPop = session.tick(100);
     expect(firstPop.effects).toContainEqual(expect.objectContaining({ kind: "clearPop", fruit: "apple", chain: 1 }));
-    expect(firstPop.sounds).toContainEqual({ kind: "splash", chain: 1, fruit: "apple" });
+    expect(firstPop.sounds).toContainEqual({ kind: "squish", chain: 1, fruit: "apple" });
 
     const rest = finishPlayback(session);
     expect(rest.effects).toContainEqual(expect.objectContaining({ kind: "clearPop", fruit: "orange", chain: 2 }));
-    expect(rest.sounds).toContainEqual({ kind: "sparkle", chain: 2 });
+    expect(rest.sounds).toContainEqual({ kind: "chainChime", chain: 2 });
     expect(session.isResolving()).toBe(false);
     expect(session.getRenderSnapshot().board).toEqual(settled);
     expect(session.getRenderSnapshot().active).toBe(game.active);
@@ -317,7 +317,7 @@ describe("GameSession", () => {
     expect(session.getBgmStage()).toBe(1);
 
     const beforeY = game.active?.axis.y;
-    expect(session.tick(Math.round(DIFFICULTY_CONFIGS.normal.dropInterval * 0.9) - 1).sounds.some((cue) => cue.kind === "tap")).toBe(false);
+    expect(session.tick(Math.round(DIFFICULTY_CONFIGS.normal.dropInterval * 0.9) - 1).sounds.some((cue) => cue.kind === "land")).toBe(false);
     expect(game.active?.axis.y).toBe(beforeY);
     session.tick(1);
     expect(game.active?.axis.y).toBe((beforeY ?? 0) + 1);

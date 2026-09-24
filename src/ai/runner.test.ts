@@ -39,7 +39,7 @@ describe("AiRunner", () => {
 
     const result = runner.tick(40);
 
-    expect(result?.sounds).toContainEqual({ kind: "tick" });
+    expect(result?.sounds).toContainEqual({ kind: "move" });
     expect(session.getRenderSnapshot().active?.axis.x).toBe((before ?? 0) - 1);
   });
 
@@ -56,7 +56,7 @@ describe("AiRunner", () => {
 
     const result = runner.tick(40);
 
-    expect(result?.sounds.some((cue) => cue.kind === "tap")).toBe(true);
+    expect(result?.sounds.some((cue) => cue.kind === "land")).toBe(true);
     expect(runner.getState()).toMatchObject({ decisionCount: 1, pendingCommands: 0 });
     expect(session.getRenderSnapshot().active?.axis.y).toBe(0);
   });
@@ -103,7 +103,7 @@ describe("AiRunner", () => {
 
     const result = runner.tick(40);
 
-    expect(result?.sounds.some((cue) => cue.kind === "tap")).toBe(true);
+    expect(result?.sounds.some((cue) => cue.kind === "land")).toBe(true);
     expect(runner.getState().lastReason).toBe("AI unstuck hard drop");
   });
 
@@ -134,11 +134,11 @@ describe("AiRunner", () => {
     runner.setEnabled(true);
     runner.setIntervalMs(40);
 
-    expect(runner.tick(40)?.sounds).toContainEqual({ kind: "tick" });
+    expect(runner.tick(40)?.sounds).toContainEqual({ kind: "move" });
     session.setMode("chainChallenge");
     const result = runner.tick(40);
 
-    expect(result?.sounds).toContainEqual({ kind: "tap" });
+    expect(result?.sounds).toContainEqual({ kind: "land" });
     expect(plannedModes).toEqual(["normal", "chainChallenge"]);
     expect(runner.getState()).toMatchObject({ mode: "chainChallenge", phase: "chainBuild" });
   });

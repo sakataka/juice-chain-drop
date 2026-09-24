@@ -1,26 +1,29 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import MidiWriter from "midi-writer-js";
-import { BGM_BASS, BGM_BPM, BGM_DRUMS, BGM_JUICE, BGM_MELODY, BGM_TICKS_PER_BEAT, type BeatDuration, type BgmDrumHit, type BgmNote } from "../src/audio/bgmComposition";
+import { BGM_BASS, BGM_BPM, BGM_DRUMS, BGM_JUICE, BGM_MELODY, BGM_PAD, BGM_TICKS_PER_BEAT, type BeatDuration, type BgmDrumHit, type BgmNote } from "../src/audio/bgmComposition";
 
 const OUTPUT_PATH = resolve("output/bgm-main.mid");
 
-const melody = createTrack("melody", 1, 81);
+const melody = createTrack("melody", 1, 12);
 melody.setTempo(BGM_BPM);
 melody.setTimeSignature(4, 4, 24, 8);
 for (const note of BGM_MELODY) addNote(melody, note, 1);
 
-const bass = createTrack("bass", 2, 38);
+const pad = createTrack("pad", 4, 89);
+for (const note of BGM_PAD) addNote(pad, note, 4);
+
+const bass = createTrack("bass", 2, 32);
 for (const note of BGM_BASS) addNote(bass, note, 2);
 
-const juice = createTrack("juice accent", 3, 9);
+const juice = createTrack("juice bubbles", 3, 10);
 for (const note of BGM_JUICE) addNote(juice, note, 3);
 
 const drums = new MidiWriter.Track();
 drums.addTrackName("drums");
 for (const hit of BGM_DRUMS) addDrum(drums, hit);
 
-const writer = new MidiWriter.Writer([melody, bass, juice, drums], { ticksPerBeat: BGM_TICKS_PER_BEAT });
+const writer = new MidiWriter.Writer([melody, pad, bass, juice, drums], { ticksPerBeat: BGM_TICKS_PER_BEAT });
 mkdirSync(dirname(OUTPUT_PATH), { recursive: true });
 writeFileSync(OUTPUT_PATH, writer.buildFile());
 console.log(`Generated ${OUTPUT_PATH}`);
@@ -45,7 +48,7 @@ function addNote(track: MidiWriter.Track, note: BgmNote, channel: number): void 
 }
 
 function addDrum(track: MidiWriter.Track, hit: BgmDrumHit): void {
-  const pitch = hit.drum === "kick" ? "C2" : hit.drum === "snare" ? "D2" : "F#2";
+  const pitch = hit.drum === "kick" ? "C2" : hit.drum === "rim" ? "C#2" : "A#3";
   track.addEvent(
     new MidiWriter.NoteEvent({
       pitch: [pitch],

@@ -12,13 +12,17 @@ import { buildResolvePlayback } from "./resolvePlayback";
 import type { ResolvePlayback } from "./resolvePlayback";
 
 export type SoundCue =
-  | { kind: "tick" }
-  | { kind: "pop" }
-  | { kind: "tap" }
-  | { kind: "whoosh"; strength?: number }
-  | { kind: "splash"; chain: number; fruit: Fruit }
-  | { kind: "sparkle"; chain: number }
-  | { kind: "pour" }
+  | { kind: "move" }
+  | { kind: "rotate" }
+  | { kind: "softDrop" }
+  | { kind: "land" }
+  | { kind: "squish"; chain: number; fruit: Fruit }
+  | { kind: "chainChime"; chain: number }
+  | { kind: "bottleFill" }
+  | { kind: "bottleBurst" }
+  | { kind: "waterDrop" }
+  | { kind: "waterClear" }
+  | { kind: "stageUp" }
   | { kind: "fanfare" }
   | { kind: "gameOver" }
   | { kind: "bgmContext"; mode: GameModeId; moment: BgmMoment }
@@ -127,7 +131,7 @@ export class GameSession {
     if (!this.acceptsPieceInput()) return NO_RESULT;
     const result = createResult({ shouldUpdateHud: true });
     if (this.game.tryMove(dx, 0)) {
-      result.sounds.push({ kind: "tick" });
+      result.sounds.push({ kind: "move" });
       result.shouldRender = true;
     }
     return result;
@@ -137,7 +141,7 @@ export class GameSession {
     if (!this.acceptsPieceInput()) return NO_RESULT;
     const result = createResult({ shouldUpdateHud: true });
     if (this.game.tryRotate()) {
-      result.sounds.push({ kind: "pop" });
+      result.sounds.push({ kind: "rotate" });
       result.shouldRender = true;
     }
     return result;
@@ -146,9 +150,9 @@ export class GameSession {
   softDrop(): GameSessionCommandResult {
     if (!this.acceptsPieceInput()) return NO_RESULT;
     if (this.game.tryMove(0, 1)) {
-      return createResult({ sounds: [{ kind: "whoosh", strength: 0.22 }], shouldRender: true, shouldUpdateHud: true });
+      return createResult({ sounds: [{ kind: "softDrop" }], shouldRender: true, shouldUpdateHud: true });
     }
-    const result = createResult({ sounds: [{ kind: "tap" }], shouldRender: true, shouldUpdateHud: true });
+    const result = createResult({ sounds: [{ kind: "land" }], shouldRender: true, shouldUpdateHud: true });
     this.applySettleReport(this.game.settlePiece(), result);
     return result;
   }
@@ -159,7 +163,7 @@ export class GameSession {
     const report = this.game.hardDrop();
     this.dropTimer = 0;
     if (report) {
-      result.sounds.push({ kind: "tap" });
+      result.sounds.push({ kind: "land" });
       this.applyResolveFeedback(report, result);
     }
     this.recordCurrentGameOver(result);
@@ -168,7 +172,7 @@ export class GameSession {
 
   settlePiece(): GameSessionCommandResult {
     if (!this.acceptsPieceInput()) return NO_RESULT;
-    const result = createResult({ sounds: [{ kind: "tap" }], shouldUpdateHud: true });
+    const result = createResult({ sounds: [{ kind: "land" }], shouldUpdateHud: true });
     this.applySettleReport(this.game.settlePiece(), result);
     return result;
   }
@@ -190,7 +194,7 @@ export class GameSession {
     if (this.dropTimer >= interval) {
       this.dropTimer = 0;
       if (!this.game.tryMove(0, 1)) {
-        result.sounds.push({ kind: "tap" });
+        result.sounds.push({ kind: "land" });
         result.shouldRender = true;
         result.shouldUpdateHud = true;
         this.applySettleReport(this.game.settlePiece(), result);
@@ -335,11 +339,11 @@ export class GameSession {
   private applyResolveFeedback(report: ResolveReport, result: GameSessionCommandResult): void {
     result.shouldRender = true;
     if (report.juiceDrop) {
-      result.sounds.push({ kind: "pour" });
+      result.sounds.push({ kind: "bottleBurst" });
       result.effects.push({ kind: "juiceSplash", effect: report.juiceDrop.effect, primary: report.juiceDrop.primary });
     }
     if ((report.pressedJuices?.length ?? 0) > 0) {
-      result.sounds.push({ kind: "pour" });
+      result.sounds.push({ kind: "bottleFill" });
     }
     this.challenge = updateChallenge(this.challenge, { kind: "chain", chain: report.chain }, GAME_MODE_CONFIGS[this.settings.mode]).state;
     if (!report.juiceDrop) this.countPlacedPiece();
@@ -379,7 +383,7 @@ export class GameSession {
       landed += 1;
     }
     if (landed === 0) return;
-    result.sounds.push({ kind: "whoosh", strength: 0.4 });
+    result.sounds.push({ kind: "waterDrop" });
     result.shouldRender = true;
     result.shouldUpdateHud = true;
   }
@@ -490,7 +494,7 @@ export class GameSession {
     const stage = this.getProgressionStage();
     if (stage === this.bgmStage) return;
     this.bgmStage = stage;
-    result.sounds.push({ kind: "bgmStage", stage });
+    result.sounds.push({ kind: "bgmStage", stage }, { kind: "stageUp" });
     result.effects.push({ kind: "stageAdvance", stage });
   }
 

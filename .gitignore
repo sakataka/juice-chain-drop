@@ -8,3 +8,6 @@ test-results
 playwright-report
 video/assets/screenshots/
 video/output/
+
+# SFX Forge review candidates (regenerate with sfx.json)
+public/sfx/_candidates/

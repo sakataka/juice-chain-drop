@@ -1,54 +1,76 @@
 import * as Tone from "tone";
 import type { BgmMoment, GameModeId, ProgressionStage } from "../core";
-import { BGM_BASS, BGM_DRUMS, BGM_JUICE, BGM_LOOP_BARS, BGM_MELODY, BGM_STAGE_BPMS, type BeatDuration, type BgmDrumHit, type BgmNote } from "./bgmComposition";
+import { BGM_BASS, BGM_DRUMS, BGM_JUICE, BGM_LOOP_BARS, BGM_MELODY, BGM_PAD, BGM_STAGE_BPMS, type BeatDuration, type BgmDrumHit, type BgmNote } from "./bgmComposition";
 
 const MODE_MIX: Record<GameModeId, { tempo: number; melody: number; bass: number; drums: number }> = {
-  normal: { tempo: 0, melody: -4, bass: -4, drums: -7 },
-  scoreAttack: { tempo: 6, melody: -3, bass: -3, drums: -4 },
-  chainChallenge: { tempo: 3, melody: -2, bass: -4, drums: -6 },
-  waterCleanup: { tempo: -2, melody: -5, bass: -2, drums: -5 },
+  normal: { tempo: 0, melody: -3, bass: -5, drums: -9 },
+  scoreAttack: { tempo: 6, melody: -2, bass: -4, drums: -6 },
+  chainChallenge: { tempo: 3, melody: -2, bass: -5, drums: -8 },
+  waterCleanup: { tempo: -2, melody: -4, bass: -4, drums: -8 },
 };
+
+/** Light swing on eighth notes gives the workshop tune its easy, hand-played feel. */
+const SWING = 0.14;
 
 export class BgmPreview {
   private readonly output = new Tone.Volume(volumeToDb(0.45)).toDestination();
-  private readonly melody = new Tone.PolySynth(Tone.Synth, {
-    oscillator: { type: "square" },
-    envelope: { attack: 0.004, decay: 0.06, sustain: 0.18, release: 0.08 },
-  }).connect(this.output);
+  private readonly room = new Tone.Reverb({ decay: 2.4, preDelay: 0.02, wet: 0.22 }).connect(this.output);
+  /** Warm FM mallet, somewhere between a marimba and a celesta. */
+  private readonly melody = new Tone.PolySynth(Tone.FMSynth, {
+    harmonicity: 3.01,
+    modulationIndex: 6,
+    oscillator: { type: "sine" },
+    modulation: { type: "sine" },
+    envelope: { attack: 0.003, decay: 0.55, sustain: 0.06, release: 0.45 },
+    modulationEnvelope: { attack: 0.002, decay: 0.18, sustain: 0, release: 0.2 },
+  }).connect(this.room);
+  private readonly padFilter = new Tone.Filter({ type: "lowpass", frequency: 1400, Q: 0.4 }).connect(this.room);
+  private readonly pad = new Tone.PolySynth(Tone.Synth, {
+    oscillator: { type: "fattriangle", count: 3, spread: 18 },
+    envelope: { attack: 0.35, decay: 0.4, sustain: 0.55, release: 1.1 },
+  }).connect(this.padFilter);
   private readonly bass = new Tone.MonoSynth({
-    oscillator: { type: "triangle" },
-    envelope: { attack: 0.004, decay: 0.08, sustain: 0.15, release: 0.08 },
-    filterEnvelope: { attack: 0.004, decay: 0.08, sustain: 0.25, release: 0.08, baseFrequency: 140, octaves: 2 },
+    oscillator: { type: "sine" },
+    envelope: { attack: 0.006, decay: 0.25, sustain: 0.35, release: 0.12 },
+    filterEnvelope: { attack: 0.004, decay: 0.12, sustain: 0.3, release: 0.1, baseFrequency: 180, octaves: 1.6 },
   }).connect(this.output);
+  private readonly bubbleDelay = new Tone.FeedbackDelay({ delayTime: "8n.", feedback: 0.22, wet: 0.25 }).connect(this.room);
   private readonly juice = new Tone.PolySynth(Tone.Synth, {
     oscillator: { type: "sine" },
-    envelope: { attack: 0.003, decay: 0.12, sustain: 0.05, release: 0.18 },
-  }).connect(this.output);
+    envelope: { attack: 0.002, decay: 0.14, sustain: 0, release: 0.2 },
+  }).connect(this.bubbleDelay);
   private readonly kick = new Tone.MembraneSynth({
-    pitchDecay: 0.022,
-    octaves: 3,
-    envelope: { attack: 0.001, decay: 0.11, sustain: 0, release: 0.04 },
+    pitchDecay: 0.03,
+    octaves: 4,
+    envelope: { attack: 0.001, decay: 0.22, sustain: 0, release: 0.05 },
   }).connect(this.output);
-  private readonly snare = new Tone.NoiseSynth({
+  /** Short woody click standing in for a snare. */
+  private readonly rim = new Tone.MembraneSynth({
+    pitchDecay: 0.004,
+    octaves: 1.5,
+    envelope: { attack: 0.001, decay: 0.05, sustain: 0, release: 0.02 },
+  }).connect(this.room);
+  private readonly shakerFilter = new Tone.Filter({ type: "highpass", frequency: 6500 }).connect(this.output);
+  private readonly shaker = new Tone.NoiseSynth({
     noise: { type: "white" },
-    envelope: { attack: 0.002, decay: 0.07, sustain: 0, release: 0.025 },
-  }).connect(this.output);
-  private readonly hat = new Tone.NoiseSynth({
-    noise: { type: "pink" },
-    envelope: { attack: 0.001, decay: 0.025, sustain: 0, release: 0.012 },
-  }).connect(this.output);
+    envelope: { attack: 0.004, decay: 0.04, sustain: 0, release: 0.02 },
+  }).connect(this.shakerFilter);
   private readonly melodyPart = new Tone.Part<[string, BgmNote]>((time, note) => {
-    this.melody.triggerAttackRelease(note.pitch, durationToTone(note.duration), time, note.velocity);
+    this.melody.triggerAttackRelease(note.pitch, beatsToTone(note.duration), time, note.velocity);
   }, BGM_MELODY.map((note) => [beatToTone(note.beat), note]));
+  private readonly padPart = new Tone.Part<[string, BgmNote]>((time, note) => {
+    this.pad.triggerAttackRelease(note.pitch, beatsToTone(note.duration), time, note.velocity);
+  }, BGM_PAD.map((note) => [beatToTone(note.beat), note]));
   private readonly bassPart = new Tone.Part<[string, BgmNote]>((time, note) => {
-    this.bass.triggerAttackRelease(note.pitch, durationToTone(note.duration), time, note.velocity);
+    this.bass.triggerAttackRelease(note.pitch, beatsToTone(note.duration), time, note.velocity);
   }, BGM_BASS.map((note) => [beatToTone(note.beat), note]));
   private readonly drumPart = new Tone.Part<[string, BgmDrumHit]>((time, hit) => {
     this.playDrum(hit, time);
   }, BGM_DRUMS.map((hit) => [beatToTone(hit.beat), hit]));
   private readonly juicePart = new Tone.Part<[string, BgmNote]>((time, note) => {
-    this.juice.triggerAttackRelease(note.pitch, durationToTone(note.duration), time, note.velocity);
+    this.juice.triggerAttackRelease(note.pitch, beatsToTone(note.duration), time, note.velocity);
   }, BGM_JUICE.map((note) => [beatToTone(note.beat), note]));
+  private readonly parts = [this.melodyPart, this.padPart, this.bassPart, this.drumPart, this.juicePart];
   private started = false;
   private stage: ProgressionStage = 0;
   private mode: GameModeId = "normal";
@@ -56,7 +78,7 @@ export class BgmPreview {
 
   constructor(volume: number) {
     this.setVolume(volume);
-    for (const part of [this.melodyPart, this.bassPart, this.drumPart, this.juicePart]) {
+    for (const part of this.parts) {
       part.loop = true;
       part.loopEnd = `${BGM_LOOP_BARS}:0:0`;
     }
@@ -70,25 +92,22 @@ export class BgmPreview {
   start(): void {
     if (this.started) return;
     this.started = true;
-    Tone.Transport.bpm.value = this.targetBpm();
-    Tone.Transport.position = 0;
-    this.melodyPart.start(0);
-    this.bassPart.start(0);
-    this.drumPart.start(0);
-    this.juicePart.start(0);
-    if (Tone.Transport.state !== "started") {
-      Tone.Transport.start();
+    Tone.getTransport().bpm.value = this.targetBpm();
+    Tone.getTransport().swing = SWING;
+    Tone.getTransport().swingSubdivision = "8n";
+    Tone.getTransport().position = 0;
+    for (const part of this.parts) part.start(0);
+    if (Tone.getTransport().state !== "started") {
+      Tone.getTransport().start();
     }
   }
 
   stop(): void {
     this.started = false;
-    this.melodyPart.stop();
-    this.bassPart.stop();
-    this.drumPart.stop();
-    this.juicePart.stop();
-    Tone.Transport.stop();
-    Tone.Transport.position = 0;
+    for (const part of this.parts) part.stop();
+    this.pad.releaseAll();
+    Tone.getTransport().stop();
+    Tone.getTransport().position = 0;
   }
 
   setVolume(volume: number): void {
@@ -109,22 +128,22 @@ export class BgmPreview {
 
   private playDrum(hit: BgmDrumHit, time: number): void {
     if (hit.drum === "kick") {
-      this.kick.triggerAttackRelease("C2", durationToTone(hit.duration), time, hit.velocity);
+      this.kick.triggerAttackRelease("A1", beatsToTone(hit.duration), time, hit.velocity);
       return;
     }
-    if (hit.drum === "snare") {
-      this.snare.triggerAttackRelease(durationToTone(hit.duration), time, hit.velocity * 0.55);
+    if (hit.drum === "rim") {
+      this.rim.triggerAttackRelease("E5", beatsToTone(hit.duration), time, hit.velocity * 0.7);
       return;
     }
-    this.hat.triggerAttackRelease(durationToTone(hit.duration), time, hit.velocity * 0.35);
+    this.shaker.triggerAttackRelease(beatsToTone(hit.duration), time, hit.velocity * 0.4);
   }
 
   private applyTempo(): void {
     const bpm = this.targetBpm();
     if (this.started) {
-      Tone.Transport.bpm.rampTo(bpm, 0.3);
+      Tone.getTransport().bpm.rampTo(bpm, 0.3);
     } else {
-      Tone.Transport.bpm.value = bpm;
+      Tone.getTransport().bpm.value = bpm;
     }
   }
 
@@ -135,24 +154,24 @@ export class BgmPreview {
 
   private applyMix(immediate: boolean): void {
     const mix = MODE_MIX[this.mode];
-    const juiceVolume = this.moment === "juiceDrop" ? -4 : this.moment === "pressReady" ? -15 : -100;
-    const melodyVolume = mix.melody + (this.moment === "flow" ? 0 : 1.5);
-    const drumsVolume = mix.drums + (this.moment === "juiceDrop" ? 3 : this.moment === "pressReady" ? 1 : 0);
-    if (immediate) {
-      this.melody.volume.value = melodyVolume;
-      this.bass.volume.value = mix.bass;
-      this.kick.volume.value = drumsVolume;
-      this.snare.volume.value = drumsVolume;
-      this.hat.volume.value = drumsVolume;
-      this.juice.volume.value = juiceVolume;
-      return;
+    // A ready bottle adds the bubbling arpeggio; a falling one also pushes the rhythm forward.
+    const juiceVolume = this.moment === "juiceDrop" ? -8 : this.moment === "pressReady" ? -16 : -100;
+    const melodyVolume = mix.melody + (this.moment === "flow" ? 0 : 1);
+    const padVolume = mix.melody - 10 + (this.moment === "juiceDrop" ? -2 : 0);
+    const drumsVolume = mix.drums + (this.moment === "juiceDrop" ? 4 : this.moment === "pressReady" ? 1.5 : 0);
+    const levels: Array<[{ volume: Tone.Param<"decibels"> }, number]> = [
+      [this.melody, melodyVolume],
+      [this.pad, padVolume],
+      [this.bass, mix.bass],
+      [this.kick, drumsVolume],
+      [this.rim, drumsVolume - 3],
+      [this.shaker, drumsVolume - 4],
+      [this.juice, juiceVolume],
+    ];
+    for (const [node, level] of levels) {
+      if (immediate) node.volume.value = level;
+      else node.volume.rampTo(level, 0.3);
     }
-    this.melody.volume.rampTo(melodyVolume, 0.22);
-    this.bass.volume.rampTo(mix.bass, 0.22);
-    this.kick.volume.rampTo(drumsVolume, 0.22);
-    this.snare.volume.rampTo(drumsVolume, 0.22);
-    this.hat.volume.rampTo(drumsVolume, 0.22);
-    this.juice.volume.rampTo(juiceVolume, 0.22);
   }
 }
 
@@ -164,11 +183,10 @@ function beatToTone(value: number): string {
   return `${bar}:${quarter}:${sixteenth}`;
 }
 
-function durationToTone(duration: BeatDuration): string {
-  if (duration === 0.25) return "16n";
-  if (duration === 0.5) return "8n";
-  if (duration === 1) return "4n";
-  return "2n";
+/** Beat lengths as bars:quarters:sixteenths so dotted and tied values stay exact. */
+function beatsToTone(beats: BeatDuration): string {
+  const sixteenths = Math.max(1, Math.round(beats * 4));
+  return `${Math.floor(sixteenths / 16)}:${Math.floor((sixteenths % 16) / 4)}:${sixteenths % 4}`;
 }
 
 function volumeToDb(value: number): number {

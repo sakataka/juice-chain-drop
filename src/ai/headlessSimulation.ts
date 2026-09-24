@@ -162,7 +162,7 @@ function runRound(options: Required<AiSimulationOptions>, roundIndex: number): I
     if (sessionResult.gameOverRecorded || aiResult?.gameOverRecorded) runner.setEnabled(false);
     simulatedMs += options.tickMs;
     ticks += 1;
-    if (aiResult?.sounds.some((cue) => cue.kind === "tap")) pieces += 1;
+    if (aiResult?.sounds.some((cue) => cue.kind === "land")) pieces += 1;
     for (const result of [sessionResult, aiResult]) waterDropped += result?.effects.filter((effect) => effect.kind === "waterDrop").length ?? 0;
 
     const runnerState = runner.getState();

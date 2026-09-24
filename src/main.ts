@@ -78,13 +78,17 @@ const debugState: DebugState = {
 installDebugHook();
 
 const soundCueHandlers: SoundCueHandlers = {
-  tick: () => sound.tick(),
-  pop: () => sound.pop(),
-  tap: () => sound.tap(),
-  whoosh: (cue) => sound.whoosh(cue.strength),
-  splash: (cue) => sound.splash(cue.chain, cue.fruit),
-  sparkle: (cue) => sound.sparkle(cue.chain),
-  pour: () => sound.pour(),
+  move: () => sound.move(),
+  rotate: () => sound.rotate(),
+  softDrop: () => sound.softDrop(),
+  land: () => sound.land(),
+  squish: (cue) => sound.squish(cue.chain, cue.fruit),
+  chainChime: (cue) => sound.chainChime(cue.chain),
+  bottleFill: () => sound.bottleFill(),
+  bottleBurst: () => sound.bottleBurst(),
+  waterDrop: () => sound.waterDrop(),
+  waterClear: () => sound.waterClear(),
+  stageUp: () => sound.stageUp(),
   fanfare: () => sound.fanfare(),
   gameOver: () => sound.gameOver(),
   bgmContext: (cue) => sound.setBgmContext(cue.mode, cue.moment),
@@ -261,6 +265,7 @@ function installDebugHook(): void {
     render: session.getRenderSnapshot(),
     hud: session.getHudSnapshot(),
     ai: aiRunner.getState(),
+    audio: { enabled: sound.enabled, loadedSfx: sound.loadedSfxKeys },
     performance: {
       memory: getMemorySnapshot(),
       now: performance.now(),

@@ -1,0 +1,112 @@
+{
+  "title": "Juice Chain Drop",
+  "style": "pop",
+  "world": "cozy fantasy juice workshop puzzle game, fresh fruit, glass bottles, bubbling juice, warm wooden workbench, playful and juicy",
+  "sounds": [
+    {
+      "key": "move",
+      "name": "左右移動",
+      "prompt": "tiny soft wooden tick, fruit nudged across a wooden tray",
+      "recipe": "ui-move",
+      "maxSec": 0.15,
+      "variants": 2
+    },
+    {
+      "key": "rotate",
+      "name": "回転",
+      "prompt": "small cork pop click, fruit pair spinning",
+      "recipe": "ui-move",
+      "maxSec": 0.2,
+      "variants": 2
+    },
+    {
+      "key": "soft_drop",
+      "name": "高速落下",
+      "prompt": "very soft short airy swish",
+      "recipe": "swing",
+      "engine": "synth",
+      "maxSec": 0.2,
+      "tier": "ui"
+    },
+    {
+      "key": "land",
+      "name": "着地",
+      "prompt": "soft round fruit landing on a wooden board, gentle muted thud",
+      "recipe": "land",
+      "maxSec": 0.3,
+      "variants": 3
+    },
+    {
+      "key": "squish",
+      "name": "消去",
+      "prompt": "juicy fruit squish and small liquid splash, wet and bright",
+      "recipe": "hit",
+      "engine": "ai",
+      "maxSec": 0.6,
+      "variants": 3
+    },
+    {
+      "key": "chain_chime",
+      "name": "連鎖",
+      "prompt": "sparkling rising glass chime, bubbly magical combo",
+      "recipe": "magic",
+      "maxSec": 0.9
+    },
+    {
+      "key": "bottle_fill",
+      "name": "ボトル完成",
+      "prompt": "juice pouring into a glass bottle, quick glug then a bright cork pop",
+      "recipe": "coin",
+      "engine": "hybrid",
+      "maxSec": 0.9
+    },
+    {
+      "key": "bottle_burst",
+      "name": "ボトル着弾",
+      "prompt": "small glass bottle cracking open with a big juicy liquid splash",
+      "recipe": "explosion",
+      "engine": "ai",
+      "maxSec": 1.2,
+      "variants": 2,
+      "tier": "heavy"
+    },
+    {
+      "key": "water_drop",
+      "name": "水が降る",
+      "prompt": "single water droplet plop into a vat, soft blip",
+      "recipe": "land",
+      "maxSec": 0.4,
+      "variants": 2
+    },
+    {
+      "key": "water_clear",
+      "name": "水が消える",
+      "prompt": "quick bubbly slurp, water draining away with little bubbles",
+      "recipe": "magic",
+      "engine": "ai",
+      "maxSec": 0.6
+    },
+    {
+      "key": "stage_up",
+      "name": "スピードアップ",
+      "prompt": "cheerful ascending two-note workshop bell, tempo rising",
+      "recipe": "alarm",
+      "maxSec": 0.7,
+      "tier": "light"
+    },
+    {
+      "key": "clear_fanfare",
+      "name": "チャレンジ達成",
+      "prompt": "short happy fanfare with glass chimes and bells",
+      "recipe": "powerup",
+      "maxSec": 1.6
+    },
+    {
+      "key": "game_over",
+      "name": "ゲームオーバー",
+      "prompt": "gentle descending sad tones, a bottle tipping over and a sigh",
+      "recipe": "defeat",
+      "maxSec": 1.6
+    }
+  ]
+}

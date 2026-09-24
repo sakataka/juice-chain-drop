@@ -323,3 +323,11 @@ test("leaves keyboard input to focused settings controls", async ({ page }) => {
   });
   expect(after).toEqual({ x: before, state: "playing" });
 });
+
+test("loads every generated sound effect once sound is unlocked", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "Start" }).click();
+  const expected = await page.evaluate(async () => ((await (await fetch("./sfx/sfx-manifest.json")).json()) as { sounds: unknown[] }).sounds.length);
+  expect(expected).toBeGreaterThan(10);
+  await expect.poll(async () => (await page.evaluate(() => window.__juiceDebug?.() as any))?.audio.loadedSfx.length, { timeout: 10_000 }).toBe(expected);
+});

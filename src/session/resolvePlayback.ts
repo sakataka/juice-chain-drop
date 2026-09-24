@@ -40,12 +40,12 @@ export function buildResolvePlayback(frames: ResolveFrame[]): ResolvePlayback | 
 
 function cuesFor(frame: ResolveFrame): Pick<PlaybackStep, "sounds" | "effects"> {
   if (frame.kind !== "pop") return { sounds: [], effects: [] };
-  const sounds: SoundCue[] = [{ kind: "splash", chain: frame.chain, fruit: frame.pops[0].fruit }];
+  const sounds: SoundCue[] = [{ kind: "squish", chain: frame.chain, fruit: frame.pops[0].fruit }];
   const effects: VisualEffectCue[] = frame.pops.map((pop) => ({ kind: "clearPop", cells: pop.cells, fruit: pop.fruit, chain: pop.chain }));
   if (frame.waterClears.length > 0) {
     effects.push({ kind: "waterClear", cells: frame.waterClears });
-    sounds.push({ kind: "pour" });
+    sounds.push({ kind: "waterClear" });
   }
-  if (frame.chain >= 2) sounds.push({ kind: "sparkle", chain: frame.chain });
+  if (frame.chain >= 2) sounds.push({ kind: "chainChime", chain: frame.chain });
   return { sounds, effects };
 }

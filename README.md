@@ -130,12 +130,16 @@
 - Vite
 - TypeScript
 - PixiJS
-- JSFXR
-- Tone.js
-- midi-writer-js
+- SFX Forge（効果音の生成。`sfx.json` から `public/sfx` を作る）
+- Tone.js（BGMの再生）
+- midi-writer-js（BGMのMIDI書き出し）
 - Bun test
 - Playwright
 - GitHub Pages
+
+## クレジット
+
+- Sound effects generated with Woosh (Sony AI). Woosh の重みは CC-BY-NC 4.0 のため、効果音は非商用での利用に限ります。
 
 ## 開発
 
@@ -143,6 +147,12 @@
 
 ```bash
 bun install
+```
+
+効果音の再生成（SFX Forge が必要です）:
+
+```bash
+bun run --cwd <sfx-forge のパス> sfx build "$PWD/sfx.json" --out "$PWD/public/sfx"
 ```
 
 BGM MIDIの生成:
