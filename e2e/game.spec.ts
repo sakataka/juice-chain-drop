@@ -261,3 +261,62 @@ test("suppresses bottle motion for both OS and in-game reduced effects", async (
   await expect(page.locator(".press-bottle-fill").first()).toHaveCSS("transition-duration", "0s");
   await expect(page.locator(".juice-flight")).toHaveCount(0);
 });
+
+test("keeps board and next canvases at their native aspect ratio", async ({ page }) => {
+  for (const viewport of [
+    { width: 1440, height: 900 },
+    { width: 1280, height: 720 },
+    { width: 1920, height: 1080 },
+    { width: 420, height: 912 },
+    { width: 375, height: 667 },
+  ]) {
+    await page.setViewportSize(viewport);
+    await page.goto("/");
+    await page.getByRole("button", { name: "Start" }).click();
+    const ratios = await page.evaluate(() =>
+      ["#gameCanvas", "#nextCanvas"].map((selector) => {
+        const canvas = document.querySelector<HTMLCanvasElement>(selector)!;
+        const box = canvas.getBoundingClientRect();
+        return { selector, displayed: box.width / box.height, native: canvas.width / canvas.height };
+      }),
+    );
+    for (const ratio of ratios) {
+      expect(Math.abs(ratio.displayed - ratio.native), `${ratio.selector} at ${viewport.width}x${viewport.height}`).toBeLessThan(0.02);
+    }
+  }
+});
+
+test("keeps the title and game controls inside the stage on narrow screens", async ({ page }) => {
+  await page.setViewportSize({ width: 420, height: 912 });
+  await page.goto("/");
+  await page.getByRole("button", { name: "Auto Play" }).click();
+  await page.waitForTimeout(600);
+  const escaped = await page.evaluate(() => {
+    const stage = document.querySelector(".game-stage")!.getBoundingClientRect();
+    return [".titlebar h1", "#startButton", "#aiToggleButton", "#gameCanvas", "#touchLeftButton", "#touchPauseButton"].filter((selector) => {
+      const box = document.querySelector(selector)!.getBoundingClientRect();
+      return box.left < stage.left - 1 || box.right > stage.right + 1;
+    });
+  });
+  expect(escaped).toEqual([]);
+  const boardWidth = await page.locator("#gameCanvas").evaluate((canvas) => canvas.getBoundingClientRect().width);
+  expect(boardWidth).toBeGreaterThanOrEqual(260);
+});
+
+test("leaves keyboard input to focused settings controls", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "Start" }).click();
+  await page.getByRole("button", { name: "Settings" }).click();
+  const sfx = page.getByLabel("SFX Volume");
+  await sfx.fill("50");
+  await sfx.focus();
+  const before = await page.evaluate(() => (window.__juiceDebug?.() as { render: { active: { axis: { x: number } } } }).render.active.axis.x);
+  await page.keyboard.press("ArrowRight");
+  await page.keyboard.press("p");
+  await expect(sfx).toHaveValue("51");
+  const after = await page.evaluate(() => {
+    const debug = window.__juiceDebug?.() as { render: { state: string; active: { axis: { x: number } } } };
+    return { x: debug.render.active.axis.x, state: debug.render.state };
+  });
+  expect(after).toEqual({ x: before, state: "playing" });
+});

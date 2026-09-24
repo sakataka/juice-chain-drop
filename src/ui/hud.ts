@@ -4,11 +4,12 @@ import juiceStripUrl from "../assets/sprites/lab/juices-v2.png";
 import { DIFFICULTY_CONFIGS, FRUIT_COLORS, FRUIT_LABEL, FRUITS, GAME_MODE_CONFIGS, JUICE_EFFECT_LABEL } from "../core";
 import type { AiSpeed, DifficultyId, Fruit, FruitRecord, GameModeId, GameSettings, GameState, GridPosition, JuiceOrder } from "../core";
 import type { AiRunnerState } from "../ai";
-import type { PlayerStats } from "../storage/stats";
+import type { PlayerStats, RecordScope } from "../storage/stats";
 
 export type HudSnapshot = {
   score: number;
   lastChain: number;
+  recordScope: RecordScope;
   bestScore: number;
   bestChain: number;
   state: GameState;
@@ -147,6 +148,9 @@ export class HudController {
     this.chainValue.textContent = String(snapshot.lastChain);
     this.bestScoreValue.textContent = snapshot.bestScore.toLocaleString();
     this.bestChainValue.textContent = String(snapshot.bestChain);
+    const recordPrefix = snapshot.recordScope === "autoPlay" ? "Auto Best" : "Best";
+    setCardLabel(this.bestScoreValue, `${recordPrefix} Score`);
+    setCardLabel(this.bestChainValue, `${recordPrefix} Chain`);
     this.juiceDropsValue.textContent = String(snapshot.juiceDropsCreated);
     this.difficultySelect.value = snapshot.settings.difficulty;
     this.difficultySelect.title = getDifficultyTitle(snapshot.settings.difficulty);
@@ -266,6 +270,11 @@ function getSpriteBackgroundPosition(fruit: Fruit): string {
 function getDifficultyTitle(difficulty: DifficultyId): string {
   const config = DIFFICULTY_CONFIGS[difficulty];
   return `${config.label}: drop ${config.dropInterval}ms, bottle every ${config.juiceThreshold} cleared fruit`;
+}
+
+function setCardLabel(value: HTMLElement, label: string): void {
+  const labelElement = value.previousElementSibling;
+  if (labelElement && labelElement.textContent !== label) labelElement.textContent = label;
 }
 
 function setButtonContent(button: HTMLButtonElement, icon: string, label: string): void {

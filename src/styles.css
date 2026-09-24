@@ -148,7 +148,8 @@ input {
 .game-stage {
   position: relative;
   padding: 12px;
-  overflow: hidden;
+  /* clip, not hidden: the glow pseudo-element overflows and hidden would let focus scroll the stage sideways. */
+  overflow: clip;
 }
 
 .game-stage::before {
@@ -481,7 +482,17 @@ h2 {
   display: block;
   width: 100%;
   max-width: 100%;
+  /* Pixi writes a fixed inline height; derive it from the width so the canvas never stretches. */
+  height: auto !important;
   image-rendering: auto;
+}
+
+#gameCanvas {
+  aspect-ratio: 360 / 628;
+}
+
+#nextCanvas {
+  aspect-ratio: 300 / 84;
 }
 
 #gameCanvas {
@@ -1300,7 +1311,7 @@ html[data-reduced-effects="true"] .press-bottle-fill { transition: none; }
   }
 
   .board-shell {
-    max-width: 280px;
+    max-width: clamp(260px, calc((100svh - 330px) * 0.573), 360px);
   }
 
   .title-actions {
@@ -1325,7 +1336,7 @@ html[data-reduced-effects="true"] .press-bottle-fill { transition: none; }
 
 @media (max-width: 480px) {
   :root {
-    --mobile-board-width: clamp(184px, min(62vw, 32svh), 220px);
+    --mobile-board-width: clamp(200px, min(80vw, calc((100svh - 330px) * 0.573)), 340px);
   }
 
   body {
@@ -1373,19 +1384,6 @@ html[data-reduced-effects="true"] .press-bottle-fill { transition: none; }
     order: 3;
     width: var(--mobile-board-width);
     max-width: 100%;
-  }
-
-  #gameCanvas,
-  #nextCanvas {
-    height: auto !important;
-  }
-
-  #gameCanvas {
-    aspect-ratio: 360 / 628;
-  }
-
-  #nextCanvas {
-    aspect-ratio: 300 / 84;
   }
 
   .touch-controls {

@@ -26,6 +26,7 @@ describe("player stats storage", () => {
       bestChain: 0,
       playCount: 0,
       lastPlayedAt: null,
+      autoPlay: { bestScore: 0, bestChain: 0, playCount: 0 },
     });
   });
 
@@ -41,12 +42,13 @@ describe("player stats storage", () => {
       bestChain: 3,
       playCount: 2,
       lastPlayedAt: null,
+      autoPlay: { bestScore: 0, bestChain: 0, playCount: 0 },
     });
   });
 
   it("updates best values, play count, and last played time", () => {
     const next = completePlayerStats(
-      { bestScore: 400, bestChain: 2, playCount: 3, lastPlayedAt: null },
+      { bestScore: 400, bestChain: 2, playCount: 3, lastPlayedAt: null, autoPlay: { bestScore: 900, bestChain: 4, playCount: 1 } },
       320,
       5,
       new Date("2026-04-26T10:20:30.000Z"),
@@ -57,12 +59,38 @@ describe("player stats storage", () => {
       bestChain: 5,
       playCount: 4,
       lastPlayedAt: "2026-04-26T10:20:30.000Z",
+      autoPlay: { bestScore: 900, bestChain: 4, playCount: 1 },
     });
+  });
+
+  it("records Auto Play runs separately without touching player records", () => {
+    const next = completePlayerStats(
+      { bestScore: 400, bestChain: 2, playCount: 3, lastPlayedAt: null, autoPlay: { bestScore: 900, bestChain: 4, playCount: 1 } },
+      1_200,
+      3,
+      new Date("2026-04-26T10:20:30.000Z"),
+      "autoPlay",
+    );
+
+    expect(next).toEqual({
+      bestScore: 400,
+      bestChain: 2,
+      playCount: 3,
+      lastPlayedAt: null,
+      autoPlay: { bestScore: 1_200, bestChain: 4, playCount: 2 },
+    });
+  });
+
+  it("restores Auto Play records from older saves and corrupted values", () => {
+    const storage = memoryStorage();
+    storage.setItem("juice-chain-drop:player-stats", JSON.stringify({ bestScore: 10, autoPlay: { bestScore: "x", bestChain: 3 } }));
+
+    expect(loadPlayerStats(storage).autoPlay).toEqual({ bestScore: 0, bestChain: 3, playCount: 0 });
   });
 
   it("saves normalized stats", () => {
     const storage = memoryStorage();
-    savePlayerStats({ bestScore: 10.7, bestChain: 2, playCount: 1, lastPlayedAt: "2026-04-26T00:00:00.000Z" }, storage);
+    savePlayerStats({ bestScore: 10.7, bestChain: 2, playCount: 1, lastPlayedAt: "2026-04-26T00:00:00.000Z", autoPlay: { bestScore: 0, bestChain: 0, playCount: 0 } }, storage);
 
     expect(loadPlayerStats(storage).bestScore).toBe(10);
   });

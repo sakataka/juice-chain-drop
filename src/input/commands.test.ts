@@ -23,6 +23,7 @@ const stats: PlayerStats = {
   bestChain: 0,
   playCount: 0,
   lastPlayedAt: null,
+  autoPlay: { bestScore: 0, bestChain: 0, playCount: 0 },
 };
 
 describe("GameCommandBus", () => {

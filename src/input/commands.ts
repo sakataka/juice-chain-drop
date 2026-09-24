@@ -141,6 +141,7 @@ export class GameCommandBus {
 
   dispatchAiCommand(command: AiCommand): GameSessionCommandResult | null {
     if (command.kind === "wait") return null;
+    this.options.session.markAutoPlay();
     return this.dispatch(aiCommandToInputCommand(command));
   }
 

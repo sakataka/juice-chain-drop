@@ -21,6 +21,7 @@ const stats: PlayerStats = {
   bestChain: 0,
   playCount: 0,
   lastPlayedAt: null,
+  autoPlay: { bestScore: 0, bestChain: 0, playCount: 0 },
 };
 
 describe("GameSession", () => {
@@ -125,6 +126,33 @@ describe("GameSession", () => {
     expect(second.gameOverRecorded).toBe(false);
     expect(savedStats).toHaveLength(1);
     expect(savedStats[0].playCount).toBe(1);
+  });
+
+  it("keeps Auto Play runs out of the player's personal records", () => {
+    const savedStats: PlayerStats[] = [];
+    const { session, game } = createSession({
+      stats: { ...stats, bestScore: 500, bestChain: 2, playCount: 4 },
+      saveStats: (nextStats) => savedStats.push(nextStats),
+    });
+    session.start();
+    session.markAutoPlay();
+    game.score = 9_000;
+    game.active = { axis: { x: 0, y: 0, fruit: "apple" }, satellite: { fruit: "orange", rotation: 1 } };
+
+    expect(session.getHudSnapshot().bestScore).toBe(9_000);
+    expect(session.getHudSnapshot().recordScope).toBe("autoPlay");
+    session.settlePiece();
+
+    expect(savedStats).toHaveLength(1);
+    expect(savedStats[0].bestScore).toBe(500);
+    expect(savedStats[0].bestChain).toBe(2);
+    expect(savedStats[0].playCount).toBe(4);
+    expect(savedStats[0].autoPlay.bestScore).toBe(9_000);
+    expect(savedStats[0].autoPlay.playCount).toBe(1);
+
+    session.start();
+    expect(session.getHudSnapshot().recordScope).toBe("player");
+    expect(session.getHudSnapshot().bestScore).toBe(500);
   });
 
   it("resets challenge state when mode changes", () => {

@@ -6,6 +6,8 @@ export default defineConfig({
   use: {
     baseURL: "http://127.0.0.1:4178/juice-chain-drop/",
     trace: "retain-on-failure",
+    // Keep test runs silent; audio behavior is covered by cue assertions, not speakers.
+    launchOptions: { args: ["--mute-audio"] },
   },
   webServer: {
     command: "bun run dev -- --host 127.0.0.1 --port 4178",

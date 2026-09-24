@@ -5,12 +5,19 @@ type KeyboardInputOptions = {
   dispatch: (command: GameInputCommand) => void;
 };
 
-const CONTROL_KEYS = new Set(["ArrowLeft", "ArrowRight", "ArrowDown", "ArrowUp", " ", "Enter", "Escape", "p", "P"]);
-const HANDLED_KEYS = CONTROL_KEYS;
+const HANDLED_KEYS = new Set(["ArrowLeft", "ArrowRight", "ArrowDown", "ArrowUp", " ", "Enter", "Escape", "p", "P"]);
+const TEXT_ENTRY_SELECTOR = "input, select, textarea, [contenteditable='true']";
+
+/** Settings controls own their keys; game buttons keep Space/arrows so play never re-clicks Start. */
+function isFormControl(target: EventTarget | null): boolean {
+  return target instanceof Element && target.closest(TEXT_ENTRY_SELECTOR) !== null;
+}
 
 export function bindKeyboardInput(options: KeyboardInputOptions): () => void {
   const handleKeyDown = (event: KeyboardEvent): void => {
     const key = event.key;
+    if (event.defaultPrevented || event.isComposing || event.metaKey || event.ctrlKey || event.altKey) return;
+    if (isFormControl(event.target)) return;
     if (HANDLED_KEYS.has(key)) {
       event.preventDefault();
     }

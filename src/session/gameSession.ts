@@ -1,8 +1,8 @@
 import { GAME_MODE_CONFIGS, PROGRESSION_DROP_INTERVAL_MULTIPLIERS, getChallengeSnapshot, getDifficultyConfig, updateChallenge } from "../core";
 import type { BgmMoment, ChallengeRuntimeState, ChallengeResult, DifficultyId, Fruit, GameModeId, GameSettings, GridPosition, JuiceEffectResult, ProgressionStage, ResolveReport, ShipmentReport } from "../core";
 import { createChallengeState } from "../core";
-import { completePlayerStats } from "../storage/stats";
-import type { PlayerStats } from "../storage/stats";
+import { completePlayerStats, getScopedRecord } from "../storage/stats";
+import type { PlayerStats, RecordScope } from "../storage/stats";
 import type { GameModel } from "../core/game";
 import type { HudSnapshot } from "../ui/hud";
 import type { RenderSnapshot } from "../render/renderTypes";
@@ -65,6 +65,7 @@ export class GameSession {
   private bgmStage: ProgressionStage = 0;
   private lastBgmContext = "";
   private gameOverRecorded = false;
+  private recordScope: RecordScope = "player";
   private challenge: ChallengeRuntimeState;
   private settings: GameSettings;
   private stats: PlayerStats;
@@ -78,6 +79,7 @@ export class GameSession {
   start(): GameSessionCommandResult {
     this.game.start({ difficulty: this.settings.difficulty });
     this.gameOverRecorded = false;
+    this.recordScope = "player";
     this.resetChallenge("Active");
     this.dropTimer = 0;
     this.shipmentTimer = 0;
@@ -98,6 +100,11 @@ export class GameSession {
       this.recordGameOver(result);
     }
     return result;
+  }
+
+  /** Marks the current run as Auto Play so its result is kept apart from the player's records. */
+  markAutoPlay(): void {
+    if (this.game.state === "playing" || this.game.state === "paused") this.recordScope = "autoPlay";
   }
 
   togglePause(): GameSessionCommandResult {
@@ -258,11 +265,13 @@ export class GameSession {
   }
 
   getHudSnapshot(): HudSnapshot {
+    const record = getScopedRecord(this.stats, this.recordScope);
     return {
       score: this.game.score,
       lastChain: this.game.lastChain,
-      bestScore: Math.max(this.stats.bestScore, this.game.score),
-      bestChain: Math.max(this.stats.bestChain, this.challenge.runBestChain),
+      recordScope: this.recordScope,
+      bestScore: Math.max(record.bestScore, this.game.score),
+      bestChain: Math.max(record.bestChain, this.challenge.runBestChain),
       state: this.game.state,
       juiceStock: this.game.juiceStock,
       juiceProgress: this.game.juiceProgress,
@@ -437,7 +446,7 @@ export class GameSession {
     if (this.challenge.result === "Active" && this.settings.mode !== "normal") {
       this.challenge = { ...this.challenge, result: "Failed" };
     }
-    this.stats = completePlayerStats(this.stats, this.game.score, this.challenge.runBestChain);
+    this.stats = completePlayerStats(this.stats, this.game.score, this.challenge.runBestChain, new Date(), this.recordScope);
     this.options.saveStats(this.stats);
     result.gameOverRecorded = true;
   }
