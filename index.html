@@ -16,6 +16,7 @@
         <section class="preview-panel stage-preview">
           <div class="preview-heading">
             <h2>Next Drop</h2>
+            <p id="runStatus" class="run-status" aria-live="off"></p>
             <p id="waterIncoming" class="water-incoming" aria-live="polite" hidden></p>
           </div>
           <canvas id="nextCanvas" width="300" height="84" aria-label="next fruit and juice drops"></canvas>
@@ -24,8 +25,9 @@
           <canvas id="gameCanvas" width="360" height="628" aria-label="game board"></canvas>
           <div id="pauseOverlay" class="game-over-overlay pause-overlay" role="status" aria-hidden="true" hidden>
             <div class="game-over-panel">
-              <p class="game-over-kicker">Paused</p>
+              <p id="pauseKicker" class="game-over-kicker">Normal</p>
               <h2>Paused</h2>
+              <p class="pause-hint">Press P or Esc to resume</p>
               <button id="resumeButton" class="primary-button" type="button">Resume</button>
             </div>
           </div>
@@ -102,11 +104,13 @@
               <b id="challengeProgressValue">Normal</b>
             </div>
             <em id="challengeResultValue">Ready</em>
+            <p id="challengeDetailValue" class="challenge-detail" aria-live="polite"></p>
           </div>
         </section>
 
         <section id="settingsPanel" class="settings-panel" hidden>
           <h2>Settings</h2>
+          <p id="settingsPendingNote" class="settings-note" hidden>Mode and difficulty changes apply from the next game.</p>
           <label class="field-row" for="difficultySelect">
             <span>Difficulty</span>
             <select id="difficultySelect">

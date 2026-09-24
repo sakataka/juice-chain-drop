@@ -16,8 +16,8 @@ export function createAiGameSnapshot(session: GameSession): AiGameSnapshot {
     juiceStock: { ...hud.juiceStock },
     juiceProgress: { ...hud.juiceProgress },
     settings: {
-      mode: hud.settings.mode,
-      difficulty: hud.settings.difficulty,
+      mode: hud.run.mode,
+      difficulty: hud.run.difficulty,
     },
     challenge: session.getAiChallengeContext(),
   };

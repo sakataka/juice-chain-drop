@@ -36,6 +36,11 @@ export type VisualEffectCue =
   | { kind: "waterClear"; cells: GridPosition[] }
   | { kind: "stageAdvance"; stage: ProgressionStage };
 
+export type RunRules = {
+  mode: GameModeId;
+  difficulty: DifficultyId;
+};
+
 export type GameSessionCommandResult = {
   sounds: SoundCue[];
   effects: VisualEffectCue[];
@@ -75,16 +80,20 @@ export class GameSession {
   private pendingWater = 0;
   private challenge: ChallengeRuntimeState;
   private settings: GameSettings;
+  /** Mode and difficulty the current game follows; settings chosen mid-game wait for the next start. */
+  private run: RunRules;
   private stats: PlayerStats;
 
   constructor(private readonly options: GameSessionOptions) {
     this.settings = options.settings;
+    this.run = { mode: this.settings.mode, difficulty: this.settings.difficulty };
     this.stats = options.stats;
-    this.challenge = createChallengeState(this.settings.mode);
+    this.challenge = createChallengeState(this.run.mode);
   }
 
   start(): GameSessionCommandResult {
-    this.game.start({ difficulty: this.settings.difficulty });
+    this.run = { mode: this.settings.mode, difficulty: this.settings.difficulty };
+    this.game.start({ difficulty: this.run.difficulty });
     this.gameOverRecorded = false;
     this.recordScope = "player";
     this.playback = null;
@@ -98,7 +107,7 @@ export class GameSession {
     this.lastBgmContext = "";
     const result = createResult({ sounds: [{ kind: "bgmStage", stage: 0 }], effects: [{ kind: "clearEffects" }], shouldRender: true, shouldUpdateHud: true });
     this.syncBgmContext(result);
-    if (this.settings.mode === "waterCleanup") {
+    if (this.run.mode === "waterCleanup") {
       const cells = this.game.dropStartingWater(GAME_MODE_CONFIGS.waterCleanup.initialWaterCount ?? 0);
       for (const cell of cells) {
         result.effects.push({ kind: "waterDrop", cell });
@@ -189,7 +198,7 @@ export class GameSession {
     this.advanceProgression(deltaMs, result);
     if (this.game.state !== "playing" || !this.game.active) return result;
 
-    const difficulty = getDifficultyConfig(this.settings.difficulty);
+    const difficulty = getDifficultyConfig(this.run.difficulty);
     const interval = this.getProgressedDropInterval(this.game.slowTurns > 0 ? difficulty.slowDropInterval : difficulty.dropInterval);
     if (this.dropTimer >= interval) {
       this.dropTimer = 0;
@@ -208,15 +217,18 @@ export class GameSession {
   setDifficulty(difficulty: DifficultyId): GameSessionCommandResult {
     this.settings = { ...this.settings, difficulty };
     this.options.saveSettings(this.settings);
+    if (!this.isRunActive()) this.run = { ...this.run, difficulty };
     return createResult({ shouldUpdateHud: true });
   }
 
   setMode(mode: GameModeId): GameSessionCommandResult {
     this.settings = { ...this.settings, mode };
     this.options.saveSettings(this.settings);
+    const result = createResult({ shouldUpdateHud: true });
+    if (this.isRunActive()) return result;
+    this.run = { ...this.run, mode };
     this.resetChallenge();
     this.lastBgmContext = "";
-    const result = createResult({ shouldUpdateHud: true });
     this.syncBgmContext(result);
     return result;
   }
@@ -269,7 +281,8 @@ export class GameSession {
       soundEnabled: this.options.soundEnabled(),
       stats: this.stats,
       settings: this.settings,
-      challenge: getChallengeSnapshot(this.challenge, this.game.score, this.game.state, this.settings),
+      run: { ...this.run },
+      challenge: getChallengeSnapshot(this.challenge, this.game.score, this.game.state, this.run.mode),
     };
   }
 
@@ -303,9 +316,9 @@ export class GameSession {
   }
 
   getAiChallengeContext(): AiGameSnapshot["challenge"] {
-    const config = GAME_MODE_CONFIGS[this.settings.mode];
+    const config = GAME_MODE_CONFIGS[this.run.mode];
     return {
-      mode: this.settings.mode,
+      mode: this.run.mode,
       elapsedMs: this.challenge.elapsedMs,
       remainingMs: config.durationMs ? Math.max(0, config.durationMs - this.challenge.elapsedMs) : undefined,
       targetScore: config.targetScore,
@@ -325,7 +338,7 @@ export class GameSession {
   }
 
   private resetChallenge(result: ChallengeResult = "Ready"): void {
-    this.challenge = updateChallenge(this.challenge, { kind: "reset", mode: this.settings.mode, result }, GAME_MODE_CONFIGS[this.settings.mode]).state;
+    this.challenge = updateChallenge(this.challenge, { kind: "reset", mode: this.run.mode, result }, GAME_MODE_CONFIGS[this.run.mode]).state;
   }
 
   private applySettleReport(report: ResolveReport | null, result: GameSessionCommandResult): void {
@@ -345,7 +358,7 @@ export class GameSession {
     if ((report.pressedJuices?.length ?? 0) > 0) {
       result.sounds.push({ kind: "bottleFill" });
     }
-    this.challenge = updateChallenge(this.challenge, { kind: "chain", chain: report.chain }, GAME_MODE_CONFIGS[this.settings.mode]).state;
+    this.challenge = updateChallenge(this.challenge, { kind: "chain", chain: report.chain }, GAME_MODE_CONFIGS[this.run.mode]).state;
     if (!report.juiceDrop) this.countPlacedPiece();
     this.startPlayback(report, result);
     if (!this.playback) this.releaseWater(result);
@@ -366,7 +379,7 @@ export class GameSession {
 
   private countPlacedPiece(): void {
     this.piecesPlaced += 1;
-    this.pendingWater += getWaterPressureDrops(getDifficultyConfig(this.settings.difficulty), GAME_MODE_CONFIGS[this.settings.mode], this.piecesPlaced);
+    this.pendingWater += getWaterPressureDrops(getDifficultyConfig(this.run.difficulty), GAME_MODE_CONFIGS[this.run.mode], this.piecesPlaced);
   }
 
   /** Lands pending water once the board is settled, so it never interrupts a chain. */
@@ -389,11 +402,15 @@ export class GameSession {
   }
 
   private getWaterIncoming(): HudSnapshot["waterIncoming"] {
-    const difficulty = getDifficultyConfig(this.settings.difficulty);
-    if (!GAME_MODE_CONFIGS[this.settings.mode].waterPressure) return null;
+    const difficulty = getDifficultyConfig(this.run.difficulty);
+    if (!GAME_MODE_CONFIGS[this.run.mode].waterPressure) return null;
     const { everyPieces } = difficulty.waterPressure;
     const inPieces = everyPieces - (this.piecesPlaced % everyPieces);
     return { inPieces, drops: getWaterPressureSize(difficulty, this.piecesPlaced + inPieces) };
+  }
+
+  private isRunActive(): boolean {
+    return this.game.state === "playing" || this.game.state === "paused" || this.playback !== null;
   }
 
   private acceptsPieceInput(): boolean {
@@ -457,8 +474,8 @@ export class GameSession {
   private advanceChallenge(deltaMs: number, result: GameSessionCommandResult): void {
     const updated = updateChallenge(
       this.challenge,
-      { kind: "tick", deltaMs, score: this.game.score, gameState: this.game.state, mode: this.settings.mode },
-      GAME_MODE_CONFIGS[this.settings.mode],
+      { kind: "tick", deltaMs, score: this.game.score, gameState: this.game.state, mode: this.run.mode },
+      GAME_MODE_CONFIGS[this.run.mode],
     );
     this.challenge = updated.state;
     if (updated.shouldEndGame) {
@@ -472,7 +489,7 @@ export class GameSession {
   }
 
   private syncWaterCleanupProgress(result: GameSessionCommandResult): void {
-    if (this.settings.mode !== "waterCleanup") return;
+    if (this.run.mode !== "waterCleanup") return;
     const target = GAME_MODE_CONFIGS.waterCleanup.targetWaterClears ?? 0;
     const cleared = Math.max(0, target - this.game.countWaterCells());
     const updated = updateChallenge(this.challenge, { kind: "waterProgress", cleared }, GAME_MODE_CONFIGS.waterCleanup);
@@ -499,7 +516,7 @@ export class GameSession {
   }
 
   private getProgressionStage(): ProgressionStage {
-    const difficulty = getDifficultyConfig(this.settings.difficulty);
+    const difficulty = getDifficultyConfig(this.run.difficulty);
     return Math.min(3, Math.floor(this.elapsedPlayingMs / difficulty.progressionStageDurationMs)) as ProgressionStage;
   }
 
@@ -509,10 +526,10 @@ export class GameSession {
 
   private syncBgmContext(result: GameSessionCommandResult): void {
     const moment: BgmMoment = this.game.active?.kind === "juiceDrop" ? "juiceDrop" : this.game.queuedJuiceDrops.length > 0 ? "pressReady" : "flow";
-    const key = `${this.settings.mode}:${moment}`;
+    const key = `${this.run.mode}:${moment}`;
     if (key === this.lastBgmContext) return;
     this.lastBgmContext = key;
-    result.sounds.push({ kind: "bgmContext", mode: this.settings.mode, moment });
+    result.sounds.push({ kind: "bgmContext", mode: this.run.mode, moment });
   }
 
   private recordCurrentGameOver(result: GameSessionCommandResult): void {
@@ -525,7 +542,7 @@ export class GameSession {
     if (this.gameOverRecorded) return;
     this.gameOverRecorded = true;
     result.shouldRender = true;
-    if (this.challenge.result === "Active" && this.settings.mode !== "normal") {
+    if (this.challenge.result === "Active" && this.run.mode !== "normal") {
       this.challenge = { ...this.challenge, result: "Failed" };
     }
     this.stats = completePlayerStats(this.stats, this.game.score, this.challenge.runBestChain, new Date(), this.recordScope);

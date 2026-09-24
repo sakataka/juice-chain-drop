@@ -1,17 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import { GAME_MODE_CONFIGS } from "./modes";
 import { createChallengeState, getChallengeSnapshot, updateChallenge } from "./challenge";
-import type { GameSettings } from "./types";
-
-const settings: GameSettings = {
-  difficulty: "normal",
-  mode: "normal",
-  aiSpeed: "normal",
-  reducedMotion: false,
-  sfxVolume: 0.8,
-  bgmVolume: 0.45,
-};
-
 describe("challenge rules", () => {
   it("keeps score attack active until the 50,000 point target is reached", () => {
     const result = updateChallenge(
@@ -35,7 +24,7 @@ describe("challenge rules", () => {
     expect(result.shouldEndGame).toBe(true);
     expect(result.state.result).toBe("Success");
     expect(result.state.completedMs).toBe(1_250);
-    const snapshot = getChallengeSnapshot(result.state, 50_000, "gameover", { ...settings, mode: "scoreAttack" });
+    const snapshot = getChallengeSnapshot(result.state, 50_000, "gameover", "scoreAttack");
     expect(snapshot.progress).toBe("50,000 / 50,000 pts, 1.3s");
     expect(snapshot.resultTitle).toBe("Score Attack Clear");
     expect(snapshot.resultDetailLabel).toBe("Clear Time");
@@ -55,7 +44,7 @@ describe("challenge rules", () => {
     expect(result.shouldEndGame).toBe(true);
     expect(result.state.result).toBe("Success");
     expect(result.state.runBestChain).toBe(5);
-    const snapshot = getChallengeSnapshot(result.state, 0, "gameover", { ...settings, mode: "chainChallenge" });
+    const snapshot = getChallengeSnapshot(result.state, 0, "gameover", "chainChallenge");
     expect(snapshot.progress).toBe("Best 5 chain, 0s left");
     expect(snapshot.resultTitle).toBe("Chain Result");
     expect(snapshot.resultDetailLabel).toBe("Best Chain");
@@ -84,7 +73,7 @@ describe("challenge rules", () => {
     expect(result.shouldEndGame).toBe(true);
     expect(result.state.result).toBe("Success");
     expect(result.state.completedMs).toBe(30_000);
-    const snapshot = getChallengeSnapshot(result.state, 0, "gameover", { ...settings, mode: "waterCleanup" });
+    const snapshot = getChallengeSnapshot(result.state, 0, "gameover", "waterCleanup");
     expect(snapshot.progress).toBe("0 / 30 water, 30.0s");
     expect(snapshot.resultTitle).toBe("Water Cleanup Clear");
     expect(snapshot.resultDetailLabel).toBe("Clear Time");
@@ -93,7 +82,7 @@ describe("challenge rules", () => {
 
   it("keeps top-out result copy for failed challenges", () => {
     const state = { ...createChallengeState("scoreAttack", "Active"), result: "Failed" as const };
-    const snapshot = getChallengeSnapshot(state, 2400, "gameover", { ...settings, mode: "scoreAttack" });
+    const snapshot = getChallengeSnapshot(state, 2400, "gameover", "scoreAttack");
 
     expect(snapshot.resultKicker).toBe("Top out");
     expect(snapshot.resultTitle).toBe("Game Over");

@@ -1,6 +1,6 @@
 import { JuiceMotion } from "./juiceMotion";
-import fruitStripUrl from "../assets/sprites/lab/fruits-v2.png";
-import juiceStripUrl from "../assets/sprites/lab/juices-v2.png";
+import fruitStripUrl from "../assets/sprites/lab/fruits-v3.png";
+import juiceStripUrl from "../assets/sprites/lab/juices-v3.png";
 import { DIFFICULTY_CONFIGS, FRUIT_COLORS, FRUIT_LABEL, FRUITS, GAME_MODE_CONFIGS, JUICE_EFFECT_LABEL } from "../core";
 import type { AiSpeed, DifficultyId, Fruit, FruitRecord, GameModeId, GameSettings, GameState, GridPosition } from "../core";
 import type { AiRunnerState } from "../ai";
@@ -22,6 +22,8 @@ export type HudSnapshot = {
   soundEnabled: boolean;
   stats: PlayerStats;
   settings: GameSettings;
+  /** Rules of the game on screen; can differ from settings until the next start. */
+  run: { mode: GameModeId; difficulty: DifficultyId };
   ai?: AiRunnerState;
   challenge: {
     label: string;
@@ -92,9 +94,13 @@ export class HudController {
   private readonly modeValue = getElement<HTMLElement>("#modeValue");
   private readonly challengeProgressValue = getElement<HTMLElement>("#challengeProgressValue");
   private readonly challengeResultValue = getElement<HTMLElement>("#challengeResultValue");
+  private readonly challengeDetailValue = getElement<HTMLElement>("#challengeDetailValue");
+  private readonly settingsPendingNote = getElement<HTMLElement>("#settingsPendingNote");
   private readonly aiSpeedSelect = getElement<HTMLSelectElement>("#aiSpeedSelect");
   private readonly pressTank = getElement<HTMLElement>("#pressTank");
   private readonly waterIncoming = getElement<HTMLElement>("#waterIncoming");
+  private readonly runStatus = getElement<HTMLElement>("#runStatus");
+  private readonly pauseKicker = getElement<HTMLElement>("#pauseKicker");
   private readonly pressLanes = new Map<Fruit, PressLaneElements>();
 
   constructor(callbacks: HudCallbacks) {
@@ -137,7 +143,7 @@ export class HudController {
     this.motion.enabled = !reduced && snapshot.state !== "paused" && snapshot.state !== "gameover";
     document.documentElement.dataset.reducedEffects = String(reduced);
     if (!this.motion.enabled) this.motion.clear();
-    const juiceThreshold = DIFFICULTY_CONFIGS[snapshot.settings.difficulty].juiceThreshold;
+    const juiceThreshold = DIFFICULTY_CONFIGS[snapshot.run.difficulty].juiceThreshold;
     this.scoreValue.textContent = snapshot.score.toLocaleString();
     this.scoreValue.dataset.scoreSize = getScoreSize(snapshot.score);
     this.chainValue.textContent = String(snapshot.lastChain);
@@ -158,8 +164,10 @@ export class HudController {
     this.bgmVolumeInput.value = String(Math.round(snapshot.settings.bgmVolume * 100));
     this.modeValue.textContent = snapshot.challenge.label;
     this.modeValue.title = snapshot.challenge.progress;
-    this.challengeProgressValue.textContent = DIFFICULTY_CONFIGS[snapshot.settings.difficulty].label;
-    this.challengeProgressValue.title = getDifficultyTitle(snapshot.settings.difficulty);
+    this.challengeProgressValue.textContent = DIFFICULTY_CONFIGS[snapshot.run.difficulty].label;
+    this.challengeProgressValue.title = getDifficultyTitle(snapshot.run.difficulty);
+    if (this.challengeDetailValue.textContent !== snapshot.challenge.progress) this.challengeDetailValue.textContent = snapshot.challenge.progress;
+    this.settingsPendingNote.hidden = snapshot.run.mode === snapshot.settings.mode && snapshot.run.difficulty === snapshot.settings.difficulty;
     this.challengeResultValue.textContent = snapshot.challenge.result;
     this.gameOverKicker.textContent = snapshot.challenge.resultKicker;
     this.gameOverTitle.textContent = snapshot.challenge.resultTitle;
@@ -171,7 +179,10 @@ export class HudController {
     this.pauseOverlay.setAttribute("aria-hidden", String(snapshot.state !== "paused"));
     // A chain replay is still an active run: keep Restart and Pause available while it plays.
     const running = snapshot.state === "playing" || snapshot.state === "resolving";
-    setButtonContent(this.startButton, running ? "↻" : "▶", running ? "Restart" : snapshot.state === "gameover" ? "Retry" : "Start");
+    const inRun = running || snapshot.state === "paused";
+    setButtonContent(this.startButton, inRun ? "↻" : "▶", inRun ? "Restart" : snapshot.state === "gameover" ? "Retry" : "Start");
+    this.pauseKicker.textContent = snapshot.challenge.label;
+    this.updateRunStatus(snapshot, inRun);
     setButtonContent(this.pauseButton, snapshot.state === "paused" ? "▶" : "Ⅱ", snapshot.state === "paused" ? "Resume" : "Pause");
     this.touchPauseButton.textContent = snapshot.state === "paused" ? "Resume" : "Pause";
     this.pauseButton.disabled = !running && snapshot.state !== "paused";
@@ -211,6 +222,15 @@ export class HudController {
     }
   }
 
+  /** Score or challenge progress next to the board, so it stays visible on phones where the side panel scrolls away. */
+  private updateRunStatus(snapshot: HudSnapshot, inRun: boolean): void {
+    const visible = inRun || snapshot.state === "gameover";
+    this.runStatus.hidden = !visible;
+    if (!visible) return;
+    const text = snapshot.run.mode === "normal" ? `Score ${snapshot.score.toLocaleString()}` : snapshot.challenge.progress;
+    if (this.runStatus.textContent !== text) this.runStatus.textContent = text;
+  }
+
   private updateWaterIncoming(snapshot: HudSnapshot): void {
     const incoming = snapshot.waterIncoming;
     const visible = incoming !== null && snapshot.state !== "ready" && snapshot.state !== "gameover";
@@ -232,6 +252,8 @@ export class HudController {
     this.settingsPanel.hidden = nextHidden;
     this.settingsButton.setAttribute("aria-expanded", String(!nextHidden));
     this.settingsButton.title = nextHidden ? "Settings" : "Close settings";
+    // On phones the panel opens below the fold; bring it into view so the tap visibly does something.
+    if (!nextHidden) this.settingsPanel.scrollIntoView({ block: "nearest", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
   }
 }
 

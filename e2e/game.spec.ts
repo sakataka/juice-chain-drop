@@ -48,7 +48,7 @@ test("opens settings and pauses with keyboard", async ({ page }) => {
   await page.getByLabel("BGM Volume").fill("60");
 
   await page.getByRole("button", { name: "Start" }).click();
-  await expect(page.getByText("Chain Challenge").first()).toBeVisible();
+  await expect(page.locator("#modeValue")).toHaveText("Chain Challenge");
   await page.keyboard.press("KeyP");
   await expect(page.getByText("Paused").first()).toBeVisible();
   await page.keyboard.press("Escape");
@@ -330,4 +330,22 @@ test("loads every generated sound effect once sound is unlocked", async ({ page 
   const expected = await page.evaluate(async () => ((await (await fetch("./sfx/sfx-manifest.json")).json()) as { sounds: unknown[] }).sounds.length);
   expect(expected).toBeGreaterThan(10);
   await expect.poll(async () => (await page.evaluate(() => window.__juiceDebug?.() as any))?.audio.loadedSfx.length, { timeout: 10_000 }).toBe(expected);
+});
+
+test("repeats touch movement while a direction button is held", async ({ page }) => {
+  await page.setViewportSize({ width: 420, height: 912 });
+  await page.goto("/");
+  await page.getByRole("button", { name: "Start" }).click();
+  const axisX = async () => (await page.evaluate(() => window.__juiceDebug?.() as any)).render.active.axis.x as number;
+  const startX = await axisX();
+  const right = page.locator("#touchRightButton");
+
+  await right.dispatchEvent("pointerdown", { pointerType: "touch", isPrimary: true });
+  await expect.poll(axisX, { timeout: 2_000 }).toBe(5);
+  await right.dispatchEvent("pointerup", { pointerType: "touch", isPrimary: true });
+
+  expect(startX).toBeLessThan(5);
+  const settledX = await axisX();
+  await page.waitForTimeout(300);
+  expect(await axisX()).toBe(settledX);
 });

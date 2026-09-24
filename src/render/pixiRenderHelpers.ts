@@ -3,7 +3,7 @@ import { BOARD_X, BOARD_Y, CELL } from "../core";
 import type { Fruit, GridPosition } from "../core";
 import type { Particle, PixiRenderTextures } from "./renderTypes";
 
-export const FRUIT_DRAW_SCALE = 1.12;
+export const FRUIT_DRAW_SCALE = 1.2;
 export const EFFECT_CREAM = 0xfff1bd;
 export const EFFECT_MINT = 0x39f0c2;
 export const EFFECT_ORANGE = 0xff9f2e;

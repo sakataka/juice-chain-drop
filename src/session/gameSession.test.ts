@@ -186,6 +186,38 @@ describe("GameSession", () => {
     expect(game.active?.axis.y).toBe(spawnedY);
   });
 
+  it("keeps the running game's mode and difficulty until the next start", () => {
+    const { session, game } = createSession({ settings: { ...settings, mode: "scoreAttack", difficulty: "easy" } });
+    session.start();
+    session.tick(1_000);
+
+    session.setMode("chainChallenge");
+    session.setDifficulty("hard");
+    const hud = session.getHudSnapshot();
+
+    expect(hud.run).toEqual({ mode: "scoreAttack", difficulty: "easy" });
+    expect(hud.settings).toMatchObject({ mode: "chainChallenge", difficulty: "hard" });
+    expect(hud.challenge.label).toBe("Score Attack");
+    expect(hud.challenge.result).toBe("Active");
+    expect(session.getAiChallengeContext().mode).toBe("scoreAttack");
+    const beforeY = game.active?.axis.y ?? 0;
+    session.tick(DIFFICULTY_CONFIGS.easy.dropInterval - 5);
+    expect(game.active?.axis.y).toBe(beforeY);
+
+    session.start();
+    expect(session.getHudSnapshot().run).toEqual({ mode: "chainChallenge", difficulty: "hard" });
+    expect(game.difficulty.id).toBe("hard");
+  });
+
+  it("previews a newly chosen mode before the game starts", () => {
+    const { session } = createSession();
+
+    session.setMode("waterCleanup");
+
+    expect(session.getHudSnapshot().run.mode).toBe("waterCleanup");
+    expect(session.getHudSnapshot().challenge.label).toBe("Water Cleanup");
+  });
+
   it("keeps Auto Play runs out of the player's personal records", () => {
     const savedStats: PlayerStats[] = [];
     const { session, game } = createSession({
@@ -213,9 +245,10 @@ describe("GameSession", () => {
     expect(session.getHudSnapshot().bestScore).toBe(500);
   });
 
-  it("resets challenge state when mode changes", () => {
-    const { session } = createSession({ settings: { ...settings, mode: "scoreAttack" } });
+  it("resets challenge state when mode changes between games", () => {
+    const { session, game } = createSession({ settings: { ...settings, mode: "scoreAttack" } });
     session.start();
+    game.endGame();
 
     const result = session.setMode("chainChallenge");
 

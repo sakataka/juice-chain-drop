@@ -107,7 +107,7 @@ describe("AiRunner", () => {
     expect(runner.getState().lastReason).toBe("AI unstuck hard drop");
   });
 
-  it("discards queued commands and replans when the game mode changes", () => {
+  it("discards queued commands and replans when a new game starts in another mode", () => {
     const { session } = createSession();
     session.start();
     const plannedModes: string[] = [];
@@ -136,6 +136,7 @@ describe("AiRunner", () => {
 
     expect(runner.tick(40)?.sounds).toContainEqual({ kind: "move" });
     session.setMode("chainChallenge");
+    session.start();
     const result = runner.tick(40);
 
     expect(result?.sounds).toContainEqual({ kind: "land" });
@@ -204,8 +205,8 @@ function createAiSnapshot(session: GameSession): AiGameSnapshot {
       juiceStock: { ...hud.juiceStock },
       juiceProgress: { ...hud.juiceProgress },
       settings: {
-        mode: hud.settings.mode,
-        difficulty: hud.settings.difficulty,
+        mode: hud.run.mode,
+        difficulty: hud.run.difficulty,
       },
       challenge: session.getAiChallengeContext(),
     };

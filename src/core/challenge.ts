@@ -1,5 +1,5 @@
 import { GAME_MODE_CONFIGS } from "./modes";
-import type { GameModeConfig, GameModeId, GameSettings, GameState } from "./types";
+import type { GameModeConfig, GameModeId, GameState } from "./types";
 
 export type ChallengeResult = "Ready" | "Active" | "Success" | "Failed";
 
@@ -85,10 +85,10 @@ export function updateChallenge(state: ChallengeRuntimeState, event: ChallengeUp
   return { state: nextState, shouldEndGame: false };
 }
 
-export function getChallengeSnapshot(state: ChallengeRuntimeState, score: number, gameState: GameState, settings: GameSettings): ChallengeSnapshot {
-  const config = GAME_MODE_CONFIGS[settings.mode];
+export function getChallengeSnapshot(state: ChallengeRuntimeState, score: number, gameState: GameState, mode: GameModeId): ChallengeSnapshot {
+  const config = GAME_MODE_CONFIGS[mode];
   const gameOverResult = createGameOverResult(score);
-  if (settings.mode === "normal") {
+  if (mode === "normal") {
     return {
       label: config.label,
       progress: config.description,
@@ -96,7 +96,7 @@ export function getChallengeSnapshot(state: ChallengeRuntimeState, score: number
       ...gameOverResult,
     };
   }
-  if (settings.mode === "scoreAttack") {
+  if (mode === "scoreAttack") {
     const timeMs = state.completedMs ?? state.elapsedMs;
     const isSuccess = state.result === "Success";
     return {
@@ -113,7 +113,7 @@ export function getChallengeSnapshot(state: ChallengeRuntimeState, score: number
         : gameOverResult),
     };
   }
-  if (settings.mode === "chainChallenge") {
+  if (mode === "chainChallenge") {
     const remaining = Math.max(0, Math.ceil(((config.durationMs ?? 0) - state.elapsedMs) / 1000));
     const isSuccess = state.result === "Success";
     return {
@@ -130,7 +130,7 @@ export function getChallengeSnapshot(state: ChallengeRuntimeState, score: number
         : gameOverResult),
     };
   }
-  if (settings.mode === "waterCleanup") {
+  if (mode === "waterCleanup") {
     const timeMs = state.completedMs ?? state.elapsedMs;
     const target = config.targetWaterClears ?? 0;
     const remainingWater = Math.max(0, target - state.runWaterClears);
