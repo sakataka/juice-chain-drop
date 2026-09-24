@@ -39,8 +39,8 @@
 ## 素材
 
 - 果物、果汁瓶、水滴のスプライト（`src/assets/sprites/lab/*-v3.png`）は、背景画を参照して Codex の画像生成で作った。果物は形で区別できるようにし、Berry はイチゴにしている。
-- 効果音は `sfx.json` を SFX Forge でビルドした `public/sfx`。cue は意味ごとに分けている（move、rotate、land、squish、chainChime、bottleFill、bottleBurst、waterDrop、waterClear、stageUp など）。消去音と連鎖チャイムは、連鎖の段に合わせて音程を上げる。
-- BGM（`src/audio/bgmComposition.ts`）は24小節の3部構成で、データだけを持つ。再生は Tone.js（`bgmPreview.ts`）、MIDIへの書き出しは `scripts/generate-bgm.ts` が行う。音量は旧曲に合わせてある。Tone は `getTransport()` を使う。
+- 効果音の cue は意味ごとに分けている（move、rotate、land、squish、chainChime、bottleFill、bottleBurst、waterDrop、waterClear、stageUp など）。みずみずしさの要は、jsfxr の短い合成音に重ねる、下降する正弦波の共鳴音（`liquidNote`）。果物ごと、連鎖の段ごとに音程を変える。SFX Forge で生成した `public/sfx` のサンプルは、合成セットになかった4種（ボトル着弾、水が降る、水が消える、スピードアップ）にだけ使い、同じ共鳴音を重ねる。一度すべてをサンプルに置き換えたところ液体らしさが失われたので、この構成に戻した。
+- BGM（`src/audio/bgmComposition.ts`）は24小節の3部構成で、データだけを持つ。テンポは128（段階が上がると最大146）で、スウィングはかけず、裏拍の和音、8分のベース、スネアとハイハットで前に進む感じを出している。落ち着いた曲はパズルの速さに合わなかった。再生は Tone.js（`bgmPreview.ts`）、MIDIへの書き出しは `scripts/generate-bgm.ts` が行う。音量は旧曲に合わせてある。Tone は `getTransport()` を使う。
 
 ## 設定の反映
 

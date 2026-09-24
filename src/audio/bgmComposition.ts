@@ -1,18 +1,18 @@
 /**
- * "Morning at the Press": a cozy, lightly swung workshop tune in F major.
- * 24 bars in three sections: A (the workshop wakes), B (the presses get busy),
- * C (a dreamy turn through the borrowed B-flat minor before the loop).
+ * "Rush at the Press": an upbeat, straight-eighths workshop tune in F major.
+ * 24 bars in three sections: A (the presses start), B (the line gets busy, 16th hats),
+ * C (a brighter turn through the borrowed B-flat minor before the loop).
  * Data only; `bgmPreview.ts` plays it with Tone.js and `scripts/generate-bgm.ts` exports MIDI.
  */
-export const BGM_BPM = 96;
-export const BGM_STAGE_BPMS = [96, 102, 108, 114] as const;
+export const BGM_BPM = 128;
+export const BGM_STAGE_BPMS = [128, 134, 140, 146] as const;
 export const BGM_LOOP_BARS = 24;
 export const BGM_TICKS_PER_BEAT = 480;
 const BGM_BEATS_PER_BAR = 4;
 
 /** Note length in beats (quarter notes). */
 export type BeatDuration = number;
-type DrumName = "kick" | "rim" | "shaker";
+type DrumName = "kick" | "snare" | "hat";
 
 export type BgmNote = {
   beat: number;
@@ -106,23 +106,19 @@ export const BGM_MELODY: BgmNote[] = MELODY.flatMap((phrase, bar) =>
   })),
 );
 
+/** Short off-beat chord stabs keep the harmony moving instead of holding it. */
 export const BGM_PAD: BgmNote[] = chordSpans().flatMap(({ chord, start, length }) =>
-  CHORDS[chord].pad.map((pitch) => ({ beat: start, pitch, duration: length, velocity: 0.34 })),
+  [0.5, 1.5, 2.5, 3.5]
+    .filter((offset) => offset < length)
+    .flatMap((offset) => CHORDS[chord].pad.map((pitch) => ({ beat: start + offset, pitch, duration: 0.25, velocity: offset === 1.5 || offset === 3.5 ? 0.4 : 0.32 }))),
 );
 
-/** Root-fifth bass that walks into the next chord on the last beat. */
+/** Bouncing eighth-note bass: root, octave, fifth, with a pickup into the next chord. */
 export const BGM_BASS: BgmNote[] = chordSpans().flatMap(({ chord, start, length }, index, spans) => {
   const [root, fifth] = CHORDS[chord].bass;
-  if (length < 4) {
-    return [{ beat: start, pitch: root, duration: 1, velocity: 0.62 }, { beat: start + 1, pitch: fifth, duration: 1, velocity: 0.48 }];
-  }
-  const next = spans[(index + 1) % spans.length];
-  return [
-    { beat: start, pitch: root, duration: 1.5, velocity: 0.64 },
-    { beat: start + 1.5, pitch: root, duration: 0.5, velocity: 0.4 },
-    { beat: start + 2, pitch: fifth, duration: 1, velocity: 0.52 },
-    { beat: start + 3, pitch: CHORDS[next.chord].bass[1], duration: 1, velocity: 0.46 },
-  ];
+  const octave = raiseOctave(root);
+  const pattern = length < 4 ? [root, root, fifth, octave] : [root, root, octave, root, fifth, root, octave, CHORDS[spans[(index + 1) % spans.length].chord].bass[1]];
+  return pattern.map((pitch, step) => ({ beat: start + step * 0.5, pitch, duration: 0.5, velocity: step % 2 === 0 ? 0.66 : 0.46 }));
 });
 
 /** High glassy bubbles on the off-beats; only mixed in while a bottle is ready or falling. */
@@ -152,21 +148,25 @@ function chordSpans(): Array<{ chord: ChordName; start: number; length: number }
   );
 }
 
+function raiseOctave(pitch: string): string {
+  const match = /^([A-G][b#]?)(\d)$/.exec(pitch);
+  return match ? `${match[1]}${Number(match[2]) + 1}` : pitch;
+}
+
 function drumLoop(): BgmDrumHit[] {
   const hits: BgmDrumHit[] = [];
   for (let bar = 0; bar < BGM_LOOP_BARS; bar += 1) {
     const busy = bar >= 8 && bar < 16;
-    const dreamy = bar >= 16 && bar < 20;
-    for (let step = 0; step < 8; step += 1) {
-      if (dreamy && step % 2 === 1) continue;
-      hits.push({ beat: beat(bar, step * 0.5), drum: "shaker", duration: 0.25, velocity: step % 2 === 0 ? 0.34 : 0.22 });
+    const hatStep = busy ? 0.25 : 0.5;
+    for (let offset = 0; offset < 4; offset += hatStep) {
+      const onBeat = offset % 1 === 0;
+      hits.push({ beat: beat(bar, offset), drum: "hat", duration: 0.25, velocity: onBeat ? 0.36 : offset % 0.5 === 0 ? 0.28 : 0.18 });
     }
-    hits.push({ beat: beat(bar, 0), drum: "kick", duration: 0.5, velocity: dreamy ? 0.4 : 0.56 });
-    if (!dreamy) hits.push({ beat: beat(bar, 2), drum: "kick", duration: 0.5, velocity: 0.44 });
-    if (busy) hits.push({ beat: beat(bar, 2.5), drum: "kick", duration: 0.5, velocity: 0.32 });
-    hits.push({ beat: beat(bar, 1), drum: "rim", duration: 0.25, velocity: 0.42 });
-    hits.push({ beat: beat(bar, 3), drum: "rim", duration: 0.25, velocity: 0.46 });
-    if (bar % 8 === 7) hits.push({ beat: beat(bar, 3.5), drum: "rim", duration: 0.25, velocity: 0.34 });
+    for (const offset of [0, 1.5, 2, 3.25]) hits.push({ beat: beat(bar, offset), drum: "kick", duration: 0.5, velocity: offset === 0 ? 0.72 : 0.54 });
+    hits.push({ beat: beat(bar, 1), drum: "snare", duration: 0.25, velocity: 0.6 });
+    hits.push({ beat: beat(bar, 3), drum: "snare", duration: 0.25, velocity: 0.64 });
+    // Fill into each new section.
+    if (bar % 8 === 7) for (const offset of [3.5, 3.75]) hits.push({ beat: beat(bar, offset), drum: "snare", duration: 0.25, velocity: 0.48 });
   }
   return hits;
 }

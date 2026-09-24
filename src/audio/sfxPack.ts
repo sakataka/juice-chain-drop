@@ -32,13 +32,13 @@ export type SfxPack = Map<SfxKey, SfxPackEntry>;
 const SFX_BASE = `${import.meta.env.BASE_URL}sfx/`;
 
 /** Fetches and decodes the whole pack. Missing or broken files are skipped so play never throws. */
-export async function loadSfxPack(context: AudioContext, base = SFX_BASE): Promise<SfxPack> {
+export async function loadSfxPack(context: AudioContext, keys?: readonly SfxKey[], base = SFX_BASE): Promise<SfxPack> {
   const pack: SfxPack = new Map();
   const response = await fetch(`${base}sfx-manifest.json`);
   if (!response.ok) return pack;
   const manifest = (await response.json()) as { sounds?: ManifestSound[] };
   await Promise.all(
-    (manifest.sounds ?? []).map(async (sound) => {
+    (manifest.sounds ?? []).filter((sound) => !keys || keys.includes(sound.key as SfxKey)).map(async (sound) => {
       const buffers = (
         await Promise.all(
           sound.files.map(async (file) => {

@@ -48,7 +48,7 @@ function addNote(track: MidiWriter.Track, note: BgmNote, channel: number): void 
 }
 
 function addDrum(track: MidiWriter.Track, hit: BgmDrumHit): void {
-  const pitch = hit.drum === "kick" ? "C2" : hit.drum === "rim" ? "C#2" : "A#3";
+  const pitch = hit.drum === "kick" ? "C2" : hit.drum === "snare" ? "D2" : "F#2";
   track.addEvent(
     new MidiWriter.NoteEvent({
       pitch: [pitch],

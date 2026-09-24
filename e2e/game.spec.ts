@@ -328,7 +328,7 @@ test("loads every generated sound effect once sound is unlocked", async ({ page 
   await page.goto("/");
   await page.getByRole("button", { name: "Start" }).click();
   const expected = await page.evaluate(async () => ((await (await fetch("./sfx/sfx-manifest.json")).json()) as { sounds: unknown[] }).sounds.length);
-  expect(expected).toBeGreaterThan(10);
+  expect(expected).toBe(4);
   await expect.poll(async () => (await page.evaluate(() => window.__juiceDebug?.() as any))?.audio.loadedSfx.length, { timeout: 10_000 }).toBe(expected);
 });
 

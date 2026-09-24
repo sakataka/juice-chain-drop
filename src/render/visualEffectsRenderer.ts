@@ -355,9 +355,6 @@ export class VisualEffectsRenderer {
       graphics
         .circle(point.x, point.y, radius)
         .stroke({ color: effect.color, alpha, width });
-      graphics
-        .roundRect(point.x - 13 - burst * 2, point.y - 5, 26 + burst * 4, 10, 6)
-        .fill({ color: EFFECT_CREAM, alpha: (1 - progress) * 0.2 });
       if (effect.chain >= 2) {
         this.effectSprite(0, point.x, point.y, 42 + effect.intensity * 7, (1 - progress) * 0.28, burst * 90);
         graphics
@@ -441,9 +438,6 @@ export class VisualEffectsRenderer {
       const y = BOARD_Y + cell.y * CELL;
       this.effectSprite(4, x + CELL / 2, y + CELL / 2, 72, alpha * 0.34, easeOut(progress) * 28);
       graphics.circle(x + CELL / 2, y + CELL / 2, 8 + easeOut(progress) * 24).stroke({ color: 0x77d8ff, width: 4, alpha: alpha * 0.72 });
-      graphics
-        .roundRect(x + 9, y + 18 + easeOut(progress) * 5, CELL - 18, 8, 6)
-        .fill({ color: EFFECT_CREAM, alpha: alpha * 0.24 });
     }
     this.drawParticles(effect.particles, elapsed, progress);
   }

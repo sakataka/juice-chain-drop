@@ -9,8 +9,8 @@ const MODE_MIX: Record<GameModeId, { tempo: number; melody: number; bass: number
   waterCleanup: { tempo: -2, melody: -4, bass: -4, drums: -8 },
 };
 
-/** Light swing on eighth notes gives the workshop tune its easy, hand-played feel. */
-const SWING = 0.14;
+/** Straight eighths keep the tune driving; swing made it sound too relaxed for the puzzle pace. */
+const SWING = 0;
 
 export class BgmPreview {
   private readonly output = new Tone.Volume(volumeToDb(0.45)).toDestination();
@@ -26,12 +26,12 @@ export class BgmPreview {
   }).connect(this.room);
   private readonly padFilter = new Tone.Filter({ type: "lowpass", frequency: 1400, Q: 0.4 }).connect(this.room);
   private readonly pad = new Tone.PolySynth(Tone.Synth, {
-    oscillator: { type: "fattriangle", count: 3, spread: 18 },
-    envelope: { attack: 0.35, decay: 0.4, sustain: 0.55, release: 1.1 },
+    oscillator: { type: "fatsawtooth", count: 3, spread: 14 },
+    envelope: { attack: 0.005, decay: 0.12, sustain: 0.1, release: 0.12 },
   }).connect(this.padFilter);
   private readonly bass = new Tone.MonoSynth({
-    oscillator: { type: "sine" },
-    envelope: { attack: 0.006, decay: 0.25, sustain: 0.35, release: 0.12 },
+    oscillator: { type: "triangle" },
+    envelope: { attack: 0.004, decay: 0.16, sustain: 0.3, release: 0.06 },
     filterEnvelope: { attack: 0.004, decay: 0.12, sustain: 0.3, release: 0.1, baseFrequency: 180, octaves: 1.6 },
   }).connect(this.output);
   private readonly bubbleDelay = new Tone.FeedbackDelay({ delayTime: "8n.", feedback: 0.22, wet: 0.25 }).connect(this.room);
@@ -44,17 +44,17 @@ export class BgmPreview {
     octaves: 4,
     envelope: { attack: 0.001, decay: 0.22, sustain: 0, release: 0.05 },
   }).connect(this.output);
-  /** Short woody click standing in for a snare. */
-  private readonly rim = new Tone.MembraneSynth({
-    pitchDecay: 0.004,
-    octaves: 1.5,
-    envelope: { attack: 0.001, decay: 0.05, sustain: 0, release: 0.02 },
-  }).connect(this.room);
-  private readonly shakerFilter = new Tone.Filter({ type: "highpass", frequency: 6500 }).connect(this.output);
-  private readonly shaker = new Tone.NoiseSynth({
+  /** Bright clap-like snare: band-passed noise with a short room tail. */
+  private readonly snareFilter = new Tone.Filter({ type: "bandpass", frequency: 1900, Q: 0.8 }).connect(this.room);
+  private readonly snare = new Tone.NoiseSynth({
     noise: { type: "white" },
-    envelope: { attack: 0.004, decay: 0.04, sustain: 0, release: 0.02 },
-  }).connect(this.shakerFilter);
+    envelope: { attack: 0.001, decay: 0.13, sustain: 0, release: 0.05 },
+  }).connect(this.snareFilter);
+  private readonly hatFilter = new Tone.Filter({ type: "highpass", frequency: 7000 }).connect(this.output);
+  private readonly hat = new Tone.NoiseSynth({
+    noise: { type: "white" },
+    envelope: { attack: 0.001, decay: 0.035, sustain: 0, release: 0.015 },
+  }).connect(this.hatFilter);
   private readonly melodyPart = new Tone.Part<[string, BgmNote]>((time, note) => {
     this.melody.triggerAttackRelease(note.pitch, beatsToTone(note.duration), time, note.velocity);
   }, BGM_MELODY.map((note) => [beatToTone(note.beat), note]));
@@ -131,11 +131,11 @@ export class BgmPreview {
       this.kick.triggerAttackRelease("A1", beatsToTone(hit.duration), time, hit.velocity);
       return;
     }
-    if (hit.drum === "rim") {
-      this.rim.triggerAttackRelease("E5", beatsToTone(hit.duration), time, hit.velocity * 0.7);
+    if (hit.drum === "snare") {
+      this.snare.triggerAttackRelease(beatsToTone(hit.duration), time, hit.velocity * 0.8);
       return;
     }
-    this.shaker.triggerAttackRelease(beatsToTone(hit.duration), time, hit.velocity * 0.4);
+    this.hat.triggerAttackRelease(beatsToTone(hit.duration), time, hit.velocity * 0.4);
   }
 
   private applyTempo(): void {
@@ -157,15 +157,15 @@ export class BgmPreview {
     // A ready bottle adds the bubbling arpeggio; a falling one also pushes the rhythm forward.
     const juiceVolume = this.moment === "juiceDrop" ? -8 : this.moment === "pressReady" ? -16 : -100;
     const melodyVolume = mix.melody + (this.moment === "flow" ? 0 : 1);
-    const padVolume = mix.melody - 10 + (this.moment === "juiceDrop" ? -2 : 0);
+    const padVolume = mix.melody - 9 + (this.moment === "juiceDrop" ? -2 : 0);
     const drumsVolume = mix.drums + (this.moment === "juiceDrop" ? 4 : this.moment === "pressReady" ? 1.5 : 0);
     const levels: Array<[{ volume: Tone.Param<"decibels"> }, number]> = [
       [this.melody, melodyVolume],
       [this.pad, padVolume],
       [this.bass, mix.bass],
       [this.kick, drumsVolume],
-      [this.rim, drumsVolume - 3],
-      [this.shaker, drumsVolume - 4],
+      [this.snare, drumsVolume - 2],
+      [this.hat, drumsVolume - 4],
       [this.juice, juiceVolume],
     ];
     for (const [node, level] of levels) {

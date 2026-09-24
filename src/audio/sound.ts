@@ -1,7 +1,12 @@
+import { sfxr } from "jsfxr";
 import type { BgmMoment, Fruit, GameModeId, GameState, ProgressionStage } from "../core";
 import type { BgmPreview } from "./bgmPreview";
 import { loadSfxPack } from "./sfxPack";
 import type { SfxKey, SfxPack } from "./sfxPack";
+import { SFX_DEFINITIONS, type SynthSfxKey } from "./sfxCatalog";
+
+/** Generated samples only cover the cues the synthesized set never had. */
+const SAMPLE_KEYS: SfxKey[] = ["bottle_burst", "water_drop", "water_clear", "stage_up"];
 
 export class SoundEngine {
   enabled = true;
@@ -12,6 +17,7 @@ export class SoundEngine {
   private sfxContext: AudioContext | null = null;
   private sfxOutput: GainNode | null = null;
   private sfxPack: SfxPack = new Map();
+  private synthBuffers: Partial<Record<SynthSfxKey, AudioBuffer>> = {};
   private sfxLoad: Promise<void> | null = null;
   private bgmPreview: BgmPreview | null = null;
   /** Tone.js is large, so the BGM engine is fetched only once sound is first unlocked. */
@@ -68,59 +74,95 @@ export class SoundEngine {
     this.bgmPreview?.setContext(mode, moment);
   }
 
+  // The juicy character comes from layering short synthesized hits with a falling sine
+  // "bloop" (liquidNote), pitched by fruit and chain step. Keep that layer on every wet cue.
+
   move(): void {
-    this.play("move", { gain: 0.7 });
+    this.playSynth("tick");
   }
 
   rotate(): void {
-    this.play("rotate", { gain: 0.8 });
+    this.playSynth("pop");
   }
 
   softDrop(): void {
-    this.play("soft_drop", { gain: 0.45 });
+    this.playSynth("whoosh", { gain: 0.85, rate: 0.95 });
   }
 
   land(): void {
-    this.play("land", { gain: 0.85 });
+    if (!this.canPlay()) return;
+    this.playSynth("tap", { gain: 0.025, rate: 1.12 });
+    this.liquidNote(240, 0, 0.12, 0.12);
   }
 
-  /** Each chain step squishes a little higher, tinted by the fruit that popped. */
   squish(chain: number, fruit: Fruit): void {
-    this.play("squish", { rate: FRUIT_PITCH[fruit] * semitones(Math.min(chain - 1, 7) * 1.5), gain: 0.9 + Math.min(chain, 5) * 0.03 });
+    if (!this.canPlay()) return;
+    const capped = Math.min(4, chain);
+    const fruitPitch = FRUIT_PITCH[fruit];
+    this.liquidNote(340 * fruitPitch, 0, 0.17, 0.22);
+    this.liquidNote(510 * fruitPitch, 0.075, 0.12, 0.12);
+    this.playSynth("splash", { gain: 0.72 + capped * 0.05, rate: fruitPitch * (0.88 + capped * 0.03) });
+    if (chain >= 2) this.playSynth("splashChain", { delay: 0.07, gain: 0.6 + capped * 0.04, rate: fruitPitch * (0.94 + capped * 0.05) });
+    if (chain >= 3) this.playSynth("sparkleChain", { delay: 0.17, gain: 0.5, rate: fruitPitch * (1 + capped * 0.04) });
   }
 
-  /** The combo chime climbs a whole tone per chain step, so long chains audibly build. */
+  /** A rising sparkle cascade that gets longer and brighter with each chain step. */
   chainChime(chain: number): void {
-    this.play("chain_chime", { rate: semitones(Math.min(chain - 2, 8) * 2), gain: 0.75 });
+    if (!this.canPlay()) return;
+    const count = Math.min(chain + 2, chain >= 3 ? 6 : 5);
+    for (let index = 0; index < count; index += 1) {
+      this.playSynth(chain >= 3 ? "sparkleChain" : "sparkle", {
+        delay: index * (chain >= 3 ? 0.035 : 0.045),
+        gain: 0.5,
+        rate: 0.88 + index * 0.08 + Math.min(chain, 4) * 0.03,
+      });
+    }
   }
 
   bottleFill(): void {
-    this.play("bottle_fill", { gain: 0.9 });
+    if (!this.canPlay()) return;
+    this.playSynth("pour", { gain: 0.65 });
+    this.pourNotes(1);
   }
 
   bottleBurst(): void {
-    this.play("bottle_burst", { gain: 1 });
+    if (!this.canPlay()) return;
+    this.playSynth("pour", { gain: 0.65 });
+    this.playSample("bottle_burst", { gain: 0.55 });
+    this.pourNotes(0.9);
   }
 
   waterDrop(): void {
-    this.play("water_drop", { gain: 0.8 });
+    if (!this.canPlay()) return;
+    this.playSample("water_drop", { gain: 0.6 });
+    this.liquidNote(620, 0, 0.14, 0.14);
   }
 
   waterClear(): void {
-    this.play("water_clear", { gain: 0.85 });
+    if (!this.canPlay()) return;
+    this.playSample("water_clear", { gain: 0.6 });
+    this.liquidNote(420, 0, 0.15, 0.14);
+    this.liquidNote(700, 0.08, 0.12, 0.1);
   }
 
   stageUp(): void {
-    this.play("stage_up", { gain: 0.7 });
+    this.playSample("stage_up", { gain: 0.6 });
   }
 
   fanfare(): void {
+    if (!this.canPlay()) return;
     this.stopBgm();
-    this.play("clear_fanfare", { gain: 1 });
+    this.playSynth("fanfareLow", { gain: 0.95, rate: 0.92 });
+    this.playSynth("fanfareMid", { delay: 0.11, gain: 1, rate: 1.05 });
+    this.playSynth("fanfareHigh", { delay: 0.24, gain: 1.08, rate: 1.12 });
+    this.playSynth("sparkleChain", { delay: 0.42, gain: 0.82, rate: 1.24 });
+    this.playSynth("fanfareHigh", { delay: 0.58, gain: 0.9, rate: 1.34 });
   }
 
   gameOver(): void {
-    this.play("game_over", { gain: 0.9 });
+    if (!this.canPlay()) return;
+    this.playSynth("gameOver");
+    this.playSynth("gameOver", { delay: 0.14, gain: 0.85, rate: 0.76 });
   }
 
   syncGameState(state: GameState, bgmStage: ProgressionStage = 0): void {
@@ -151,6 +193,9 @@ export class SoundEngine {
     this.sfxContext ??= new AudioContext();
     this.sfxOutput ??= this.sfxContext.createGain();
     this.sfxOutput.connect(this.sfxContext.destination);
+    for (const key of Object.keys(SFX_DEFINITIONS) as SynthSfxKey[]) {
+      this.synthBuffers[key] ??= sfxr.toWebAudio(SFX_DEFINITIONS[key], this.sfxContext).buffer ?? undefined;
+    }
     this.applyVolumes();
   }
 
@@ -186,7 +231,7 @@ export class SoundEngine {
 
   private loadSfx(): Promise<void> {
     if (!this.sfxContext) return Promise.resolve();
-    this.sfxLoad ??= loadSfxPack(this.sfxContext)
+    this.sfxLoad ??= loadSfxPack(this.sfxContext, SAMPLE_KEYS)
       .then((pack) => {
         this.sfxPack = pack;
       })
@@ -194,16 +239,28 @@ export class SoundEngine {
     return this.sfxLoad;
   }
 
-  private play(key: SfxKey, options: { gain?: number; rate?: number; delay?: number } = {}): void {
-    if (!this.canPlay() || !this.sfxContext || !this.sfxOutput) return;
+  private playSample(key: SfxKey, options: PlayOptions = {}): void {
     const entry = this.sfxPack.get(key);
     if (!entry) return;
+    const buffer = entry.buffers[Math.floor(Math.random() * entry.buffers.length)];
+    const rate = (options.rate ?? 1) * (1 + (Math.random() * 2 - 1) * entry.pitchJitter);
+    const gain = (options.gain ?? 1) * (1 + (Math.random() * 2 - 1) * entry.volumeJitter);
+    this.playBuffer(buffer, { ...options, rate, gain });
+  }
+
+  private playSynth(key: SynthSfxKey, options: PlayOptions = {}): void {
+    const buffer = this.synthBuffers[key];
+    if (buffer) this.playBuffer(buffer, options);
+  }
+
+  private playBuffer(buffer: AudioBuffer, options: PlayOptions): void {
+    if (!this.canPlay() || !this.sfxContext || !this.sfxOutput) return;
     const source = this.sfxContext.createBufferSource();
     const gain = this.sfxContext.createGain();
     const startTime = this.sfxContext.currentTime + (options.delay ?? 0);
-    source.buffer = entry.buffers[Math.floor(Math.random() * entry.buffers.length)];
-    source.playbackRate.value = (options.rate ?? 1) * (1 + (Math.random() * 2 - 1) * entry.pitchJitter);
-    gain.gain.value = (options.gain ?? 1) * (1 + (Math.random() * 2 - 1) * entry.volumeJitter);
+    source.buffer = buffer;
+    source.playbackRate.setValueAtTime(options.rate ?? 1, startTime);
+    gain.gain.setValueAtTime(options.gain ?? 1, startTime);
     source.connect(gain);
     gain.connect(this.sfxOutput);
     source.start(startTime);
@@ -212,22 +269,49 @@ export class SoundEngine {
       gain.disconnect();
     };
   }
+
+  private pourNotes(gainScale: number): void {
+    this.liquidNote(320, 0, 0.16, 0.18 * gainScale);
+    this.liquidNote(440, 0.1, 0.14, 0.15 * gainScale);
+    this.liquidNote(680, 0.22, 0.12, 0.12 * gainScale);
+  }
+
+  /** A short resonant sine that drops in pitch: the "bloop" that makes cues sound wet. */
+  private liquidNote(frequency: number, delay: number, duration: number, volume: number): void {
+    if (!this.sfxContext || !this.sfxOutput) return;
+    const oscillator = this.sfxContext.createOscillator();
+    const envelope = this.sfxContext.createGain();
+    const at = this.sfxContext.currentTime + delay;
+    oscillator.type = "sine";
+    oscillator.frequency.setValueAtTime(frequency * 1.9, at);
+    oscillator.frequency.exponentialRampToValueAtTime(frequency, at + duration * 0.2);
+    oscillator.frequency.exponentialRampToValueAtTime(frequency * 0.55, at + duration);
+    envelope.gain.setValueAtTime(0, at);
+    envelope.gain.linearRampToValueAtTime(volume, at + 0.008);
+    envelope.gain.exponentialRampToValueAtTime(0.001, at + duration);
+    oscillator.connect(envelope);
+    envelope.connect(this.sfxOutput);
+    oscillator.start(at);
+    oscillator.stop(at + duration);
+    oscillator.onended = () => {
+      oscillator.disconnect();
+      envelope.disconnect();
+    };
+  }
 }
 
 function clamp01(value: number): number {
   return Math.max(0, Math.min(1, Number.isFinite(value) ? value : 0));
 }
 
-function semitones(steps: number): number {
-  return 2 ** (Math.max(0, steps) / 12);
-}
+type PlayOptions = { gain?: number; rate?: number; delay?: number };
 
-/** Small per-fruit pitch offsets so different fruit popping together do not sound identical. */
+/** Per-fruit pitch so different fruit popping sound different (from the original liquid design). */
 const FRUIT_PITCH: Record<Fruit, number> = {
-  apple: semitones(0),
-  orange: semitones(1),
-  lemon: semitones(3),
-  grape: 2 ** (-2 / 12),
-  melon: 2 ** (-1 / 12),
-  berry: semitones(4),
+  apple: 0.92,
+  orange: 0.98,
+  lemon: 1.08,
+  grape: 0.86,
+  melon: 0.9,
+  berry: 1.14,
 };
