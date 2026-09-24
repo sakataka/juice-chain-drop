@@ -36,6 +36,16 @@
 4. 着地した果物は280msかけて減衰しながら潰れて戻る。消去では果物を圧縮してから飛沫へつなぐ。瓶は進捗が上がると小さく、完成すると大きく弾む。
 5. ゲーム内の Reduced Effects、またはOSの「視差効果を減らす」設定がオンのときは、動きとCanvas演出を抑える。その場合も、状態、瓶の色、数値、果汁の水位は表示する。連鎖の再生時間はゲームの進行に関わるので、演出を減らしても変えない。
 
+## 素材
+
+- 果物、果汁瓶、水滴のスプライト（`src/assets/sprites/lab/*-v3.png`）は、背景画を参照して Codex の画像生成で作った。果物は形で区別できるようにし、Berry はイチゴにしている。
+- 効果音は `sfx.json` を SFX Forge でビルドした `public/sfx`。cue は意味ごとに分けている（move、rotate、land、squish、chainChime、bottleFill、bottleBurst、waterDrop、waterClear、stageUp など）。消去音と連鎖チャイムは、連鎖の段に合わせて音程を上げる。
+- BGM（`src/audio/bgmComposition.ts`）は24小節の3部構成で、データだけを持つ。再生は Tone.js（`bgmPreview.ts`）、MIDIへの書き出しは `scripts/generate-bgm.ts` が行う。音量は旧曲に合わせてある。Tone は `getTransport()` を使う。
+
+## 設定の反映
+
+難易度とモードは、ゲーム開始時の値をその回のルールとして固定する。プレイ中の変更は次のゲームから反映し、設定パネルにその旨を表示する。
+
 ## 実装境界
 
 - ルール（`src/core`）：盤面、消去、搾汁、水の圧力、再生用フレーム。描画・音・DOMには依存しない。

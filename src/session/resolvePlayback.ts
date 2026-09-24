@@ -13,6 +13,8 @@ export type PlaybackStep = {
   atMs: number;
   board: Board;
   falls: FallMove[];
+  /** Chain step reached when this step shows; 0 before the first pop. */
+  chain: number;
   sounds: SoundCue[];
   effects: VisualEffectCue[];
 };
@@ -31,8 +33,10 @@ export function buildResolvePlayback(frames: ResolveFrame[]): ResolvePlayback | 
   if (!frames.some((frame) => frame.kind === "pop" || frame.kind === "burst")) return null;
   const steps: PlaybackStep[] = [];
   let atMs = 0;
+  let chain = 0;
   for (const frame of frames) {
-    steps.push({ atMs, board: frame.board, falls: frame.kind === "settle" || frame.kind === "collapse" ? frame.falls : [], ...cuesFor(frame) });
+    if (frame.kind === "pop") chain = frame.chain;
+    steps.push({ atMs, board: frame.board, falls: frame.kind === "settle" || frame.kind === "collapse" ? frame.falls : [], chain, ...cuesFor(frame) });
     atMs += PLAYBACK_TIMING_MS[frame.kind];
   }
   return { steps, durationMs: atMs };

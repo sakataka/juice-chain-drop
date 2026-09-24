@@ -87,6 +87,7 @@ describe("GameSession", () => {
     game.active = { axis: { x: 3, y: 0, fruit: "apple" }, satellite: { fruit: "orange", rotation: 0 } };
 
     session.hardDrop();
+    finishPlayback(session);
 
     const hud = session.getHudSnapshot();
     expect(hud.lastChain).toBe(1);
@@ -146,7 +147,10 @@ describe("GameSession", () => {
     expect(session.move(-1).shouldRender).toBe(false);
     expect(session.getRenderSnapshot().nextPreviews[0]).toEqual({ kind: "fruitPair", pair: [game.active!.axis.fruit, game.active!.satellite.fruit] });
 
+    expect(session.getHudSnapshot().lastChain).toBe(0);
     const firstPop = session.tick(100);
+    expect(session.getHudSnapshot().lastChain).toBe(1);
+    expect(firstPop.shouldUpdateHud).toBe(true);
     expect(firstPop.effects).toContainEqual(expect.objectContaining({ kind: "clearPop", fruit: "apple", chain: 1 }));
     expect(firstPop.sounds).toContainEqual({ kind: "squish", chain: 1, fruit: "apple" });
 
@@ -154,6 +158,7 @@ describe("GameSession", () => {
     expect(rest.effects).toContainEqual(expect.objectContaining({ kind: "clearPop", fruit: "orange", chain: 2 }));
     expect(rest.sounds).toContainEqual({ kind: "chainChime", chain: 2 });
     expect(session.isResolving()).toBe(false);
+    expect(session.getHudSnapshot().lastChain).toBe(2);
     expect(session.getRenderSnapshot().board).toEqual(settled);
     expect(session.getRenderSnapshot().active).toBe(game.active);
     expect(session.move(-1).shouldUpdateHud).toBe(true);

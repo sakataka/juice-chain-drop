@@ -268,7 +268,8 @@ export class GameSession {
     const record = getScopedRecord(this.stats, this.recordScope);
     return {
       score: this.game.score,
-      lastChain: this.game.lastChain,
+      // During a replay the chain counter climbs with the board instead of jumping to the result.
+      lastChain: this.playback ? this.playback.timeline.steps[this.playback.stepIndex].chain : this.game.lastChain,
       recordScope: this.recordScope,
       bestScore: Math.max(record.bestScore, this.game.score),
       bestChain: Math.max(record.bestChain, this.challenge.runBestChain),
@@ -459,6 +460,7 @@ export class GameSession {
       result.sounds.push(...step.sounds);
       result.effects.push(...step.effects);
       result.shouldRender = true;
+      result.shouldUpdateHud ||= step.chain !== steps[playback.stepIndex - 1].chain;
     }
     if (playback.elapsedMs >= durationMs) {
       this.playback = null;
