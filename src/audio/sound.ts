@@ -1,6 +1,6 @@
 import { sfxr } from "jsfxr";
 import type { BgmMoment, Fruit, GameModeId, GameState, ProgressionStage } from "../core";
-import { BgmPreview } from "./bgmPreview";
+import type { BgmPreview } from "./bgmPreview";
 import { SFX_DEFINITIONS, type SfxKey } from "./sfxCatalog";
 
 export class SoundEngine {
@@ -13,6 +13,9 @@ export class SoundEngine {
   private sfxOutput: GainNode | null = null;
   private sfxBuffers: Partial<Record<SfxKey, AudioBuffer>> = {};
   private bgmPreview: BgmPreview | null = null;
+  /** Tone.js is large, so the BGM engine is fetched only once sound is first unlocked. */
+  private bgmLoad: Promise<void> | null = null;
+  private bgmWanted = false;
   private bgmStage: ProgressionStage = 0;
   private bgmMode: GameModeId = "normal";
   private bgmMoment: BgmMoment = "flow";
@@ -32,9 +35,10 @@ export class SoundEngine {
     if (!this.enabled) return;
     this.ensureNodes();
     const sfxUnlock = this.sfxContext?.resume();
-    const bgmUnlock = this.bgmPreview?.unlock();
+    const bgmUnlock = this.loadBgm().then(() => this.bgmPreview?.unlock());
     await Promise.all([sfxUnlock, bgmUnlock]);
     this.unlocked = true;
+    if (this.bgmWanted) this.bgmPreview?.start();
   }
 
   setSfxVolume(value: number): void {
@@ -153,25 +157,37 @@ export class SoundEngine {
   }
 
   private ensureNodes(): void {
-    if (this.sfxOutput && this.bgmPreview) return;
+    if (this.sfxOutput) return;
 
     this.sfxContext ??= new AudioContext();
     this.sfxOutput ??= this.sfxContext.createGain();
     this.sfxOutput.connect(this.sfxContext.destination);
     this.cacheSfxBuffers();
-    this.bgmPreview ??= new BgmPreview(this.bgmVolume);
-    this.bgmPreview.setStage(this.bgmStage);
-    this.bgmPreview.setContext(this.bgmMode, this.bgmMoment);
     this.applyVolumes();
+  }
+
+  private loadBgm(): Promise<void> {
+    this.bgmLoad ??= import("./bgmPreview").then(({ BgmPreview }) => {
+      this.bgmPreview = new BgmPreview(this.bgmVolume);
+      this.bgmPreview.setStage(this.bgmStage);
+      this.bgmPreview.setContext(this.bgmMode, this.bgmMoment);
+      this.applyVolumes();
+    });
+    return this.bgmLoad;
   }
 
   private startBgm(): void {
     if (!this.enabled || !this.unlocked) return;
     this.ensureNodes();
-    this.bgmPreview?.start();
+    this.bgmWanted = true;
+    if (this.bgmPreview) this.bgmPreview.start();
+    else void this.loadBgm().then(() => {
+      if (this.bgmWanted && this.enabled) this.bgmPreview?.start();
+    });
   }
 
   private stopBgm(): void {
+    this.bgmWanted = false;
     this.bgmPreview?.stop();
   }
 

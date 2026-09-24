@@ -61,7 +61,7 @@ body::before {
     linear-gradient(90deg, rgba(24, 11, 3, 0.24), rgba(26, 13, 4, 0.05) 28%, rgba(26, 13, 4, 0.05) 72%, rgba(24, 11, 3, 0.26)),
     radial-gradient(circle at 50% 48%, rgba(22, 11, 3, 0.55), transparent 36%),
     linear-gradient(180deg, rgba(28, 14, 4, 0.02), rgba(22, 11, 3, 0.26)),
-    url("./assets/backgrounds/lab/juice-lab-backdrop.jpg");
+    url("./assets/backgrounds/lab/juice-lab-backdrop.webp");
   background-size:
     auto,
     auto,

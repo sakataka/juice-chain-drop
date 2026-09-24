@@ -1,6 +1,6 @@
 import { Application, Assets, Container, Rectangle, Texture } from "pixi.js";
 import effectStripUrl from "../assets/sprites/lab/effects-v2.png";
-import juiceSplashUrl from "../assets/effects/lab/juice-splash.png";
+import juiceSplashUrl from "../assets/effects/lab/juice-splash.webp";
 import counterWoodUrl from "../assets/tiles/lab/counter-lab-v2.png";
 import boardFrameUrl from "../assets/tiles/lab/board-frame-v2.png";
 import fruitStripUrl from "../assets/sprites/lab/fruits-v2.png";
