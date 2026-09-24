@@ -79,7 +79,7 @@ export class PixiGameRenderer {
     await this.loadAssets();
     this.gameApp.stage.addChild(this.backgroundLayer, this.boardLayer, this.ghostLayer, this.activeLayer, this.effectsLayer);
     this.nextApp.stage.addChild(this.nextLayer);
-    this.boardRenderer.drawBackground();
+    this.boardRenderer.init();
     this.gameApp.ticker.add(() => {
       const now = performance.now();
       this.visualEffectsRenderer.draw(now);
@@ -101,7 +101,7 @@ export class PixiGameRenderer {
 
   render(snapshot: RenderSnapshot): void {
     if (!this.ready) return;
-    this.boardRenderer.drawBoard(snapshot.board, !this.reducedMotion);
+    this.boardRenderer.drawBoard(snapshot.board, !this.reducedMotion, snapshot.falls, snapshot.presentationStep);
     this.boardRenderer.drawGhost(snapshot.board, snapshot.active, snapshot.state);
     this.boardRenderer.drawActivePiece(snapshot.active);
     this.boardRenderer.drawNextQueue(snapshot.nextPreviews);

@@ -1,6 +1,6 @@
 import { COLS, ROWS, ROTATIONS } from "./constants";
 import { isFruitCell } from "./utils";
-import type { Board, Cell, ClearGroup, FruitPair, GridPosition, PairPiece, PieceCell } from "./types";
+import type { Board, Cell, ClearGroup, FallMove, FruitPair, GridPosition, PairPiece, PieceCell } from "./types";
 
 export function createBoard(): Board {
   return Array.from({ length: ROWS }, () => Array<Cell>(COLS).fill(null));
@@ -57,18 +57,23 @@ export function rotatedPiece(piece: PairPiece, kick: number): PairPiece {
   };
 }
 
-export function applyGravity(board: Board): void {
+/** Drops every cell to the floor in place and returns the cells that moved. */
+export function applyGravity(board: Board): FallMove[] {
+  const falls: FallMove[] = [];
   for (let x = 0; x < COLS; x += 1) {
-    const stack: Cell[] = [];
+    let floor = ROWS - 1;
     for (let y = ROWS - 1; y >= 0; y -= 1) {
-      const cell = board[y][x];
-      if (cell !== null) stack.push(cell);
-      board[y][x] = null;
-    }
-    for (let index = 0; index < stack.length; index += 1) {
-      board[ROWS - 1 - index][x] = stack[index];
+      const cell: Cell = board[y][x];
+      if (cell === null) continue;
+      if (y !== floor) {
+        board[floor][x] = cell;
+        board[y][x] = null;
+        falls.push({ x, fromY: y, toY: floor });
+      }
+      floor -= 1;
     }
   }
+  return falls;
 }
 
 export function findClearGroups(board: Board): ClearGroup[] {

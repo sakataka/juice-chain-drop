@@ -1,5 +1,5 @@
 import { GAME_MODE_CONFIGS, PROGRESSION_DROP_INTERVAL_MULTIPLIERS, getChallengeSnapshot, getDifficultyConfig, updateChallenge } from "../core";
-import type { BgmMoment, ChallengeRuntimeState, ChallengeResult, DifficultyId, Fruit, GameModeId, GameSettings, GridPosition, JuiceEffectResult, ProgressionStage, ResolveReport } from "../core";
+import type { BgmMoment, ChallengeRuntimeState, ChallengeResult, DifficultyId, Fruit, GameModeId, GameSettings, GameState, GridPosition, JuiceEffectResult, NextPiecePreview, ProgressionStage, ResolveReport } from "../core";
 import { createChallengeState } from "../core";
 import { completePlayerStats, getScopedRecord } from "../storage/stats";
 import type { PlayerStats, RecordScope } from "../storage/stats";
@@ -8,6 +8,8 @@ import type { HudSnapshot } from "../ui/hud";
 import type { RenderSnapshot } from "../render/renderTypes";
 import type { AiSpeed } from "../core";
 import type { AiGameSnapshot } from "../ai/types";
+import { buildResolvePlayback } from "./resolvePlayback";
+import type { ResolvePlayback } from "./resolvePlayback";
 
 export type SoundCue =
   | { kind: "tick" }
@@ -63,6 +65,8 @@ export class GameSession {
   private lastBgmContext = "";
   private gameOverRecorded = false;
   private recordScope: RecordScope = "player";
+  private playback: { timeline: ResolvePlayback; elapsedMs: number; stepIndex: number } | null = null;
+  private presentationStep = 0;
   private challenge: ChallengeRuntimeState;
   private settings: GameSettings;
   private stats: PlayerStats;
@@ -77,6 +81,8 @@ export class GameSession {
     this.game.start({ difficulty: this.settings.difficulty });
     this.gameOverRecorded = false;
     this.recordScope = "player";
+    this.playback = null;
+    this.presentationStep += 1;
     this.resetChallenge("Active");
     this.dropTimer = 0;
     this.elapsedPlayingMs = 0;
@@ -114,7 +120,7 @@ export class GameSession {
   }
 
   move(dx: number): GameSessionCommandResult {
-    if (this.game.state !== "playing" || !this.game.active) return NO_RESULT;
+    if (!this.acceptsPieceInput()) return NO_RESULT;
     const result = createResult({ shouldUpdateHud: true });
     if (this.game.tryMove(dx, 0)) {
       result.sounds.push({ kind: "tick" });
@@ -124,7 +130,7 @@ export class GameSession {
   }
 
   rotate(): GameSessionCommandResult {
-    if (this.game.state !== "playing" || !this.game.active) return NO_RESULT;
+    if (!this.acceptsPieceInput()) return NO_RESULT;
     const result = createResult({ shouldUpdateHud: true });
     if (this.game.tryRotate()) {
       result.sounds.push({ kind: "pop" });
@@ -134,7 +140,7 @@ export class GameSession {
   }
 
   softDrop(): GameSessionCommandResult {
-    if (this.game.state !== "playing" || !this.game.active) return NO_RESULT;
+    if (!this.acceptsPieceInput()) return NO_RESULT;
     if (this.game.tryMove(0, 1)) {
       return createResult({ sounds: [{ kind: "whoosh", strength: 0.22 }], shouldRender: true, shouldUpdateHud: true });
     }
@@ -144,7 +150,7 @@ export class GameSession {
   }
 
   hardDrop(): GameSessionCommandResult {
-    if (this.game.state !== "playing" || !this.game.active) return NO_RESULT;
+    if (!this.acceptsPieceInput()) return NO_RESULT;
     const result = createResult({ shouldUpdateHud: true });
     const report = this.game.hardDrop();
     this.dropTimer = 0;
@@ -157,14 +163,15 @@ export class GameSession {
   }
 
   settlePiece(): GameSessionCommandResult {
-    if (this.game.state !== "playing" || !this.game.active) return NO_RESULT;
+    if (!this.acceptsPieceInput()) return NO_RESULT;
     const result = createResult({ sounds: [{ kind: "tap" }], shouldUpdateHud: true });
     this.applySettleReport(this.game.settlePiece(), result);
     return result;
   }
 
   tick(deltaMs: number): GameSessionCommandResult {
-    if (this.game.state !== "playing" || !this.game.active) {
+    if (this.playback) return this.tickPlayback(deltaMs);
+    if (!this.acceptsPieceInput()) {
       return NO_RESULT;
     }
 
@@ -245,7 +252,7 @@ export class GameSession {
       recordScope: this.recordScope,
       bestScore: Math.max(record.bestScore, this.game.score),
       bestChain: Math.max(record.bestChain, this.challenge.runBestChain),
-      state: this.game.state,
+      state: this.getPresentedState(),
       juiceStock: this.game.juiceStock,
       juiceProgress: this.game.juiceProgress,
       juiceDropsCreated: this.game.juiceDropsCreated,
@@ -258,12 +265,30 @@ export class GameSession {
   }
 
   getRenderSnapshot(): RenderSnapshot {
+    if (this.playback) {
+      const step = this.playback.timeline.steps[this.playback.stepIndex];
+      return {
+        board: step.board,
+        active: null,
+        nextPreviews: this.getPlaybackPreviews(),
+        state: this.getPresentedState(),
+        falls: step.falls,
+        presentationStep: this.presentationStep,
+      };
+    }
     return {
       board: this.game.board,
       active: this.game.active,
       nextPreviews: this.game.nextPreviews,
       state: this.game.state,
+      falls: [],
+      presentationStep: this.presentationStep,
     };
+  }
+
+  /** True while a chain is being replayed; the rules have already finished resolving. */
+  isResolving(): boolean {
+    return this.playback !== null;
   }
 
   getAiChallengeContext(): AiGameSnapshot["challenge"] {
@@ -310,20 +335,67 @@ export class GameSession {
       result.sounds.push({ kind: "pour" });
     }
     this.challenge = updateChallenge(this.challenge, { kind: "chain", chain: report.chain }, GAME_MODE_CONFIGS[this.settings.mode]).state;
-    for (const pop of report.popEvents) {
-      result.effects.push({ kind: "clearPop", cells: pop.cells, fruit: pop.fruit, chain: pop.chain });
-      result.sounds.push({ kind: "splash", chain: pop.chain, fruit: pop.fruit });
-    }
-    if (report.waterClears.length > 0) {
-      result.effects.push({ kind: "waterClear", cells: report.waterClears });
-      result.sounds.push({ kind: "pour" });
-    }
-    if (report.chain >= 2) {
-      result.sounds.push({ kind: "sparkle", chain: report.chain });
-    }
+    this.startPlayback(report, result);
     this.syncBgmContext(result);
     this.syncWaterCleanupProgress(result);
     this.advanceChallenge(0, result);
+  }
+
+  private acceptsPieceInput(): boolean {
+    return this.playback === null && this.game.state === "playing" && this.game.active !== null;
+  }
+
+  private getPresentedState(): GameState {
+    if (!this.playback) return this.game.state;
+    return this.game.state === "paused" ? "paused" : "resolving";
+  }
+
+  /** Next Drop during playback: the piece waiting to appear comes first. */
+  private getPlaybackPreviews(): NextPiecePreview[] {
+    const upcoming = this.game.active;
+    const previews = this.game.nextPreviews;
+    if (!upcoming) return previews;
+    const first: NextPiecePreview =
+      upcoming.kind === "juiceDrop" ? { kind: "juiceDrop", fruit: upcoming.axis.fruit } : { kind: "fruitPair", pair: [upcoming.axis.fruit, upcoming.satellite.fruit] };
+    return [first, ...previews.slice(0, previews.length - 1)];
+  }
+
+  private startPlayback(report: ResolveReport, result: GameSessionCommandResult): void {
+    const timeline = buildResolvePlayback(report.frames);
+    if (!timeline) return;
+    this.playback = { timeline, elapsedMs: 0, stepIndex: 0 };
+    this.presentationStep += 1;
+    const first = timeline.steps[0];
+    result.sounds.push(...first.sounds);
+    result.effects.push(...first.effects);
+  }
+
+  private tickPlayback(deltaMs: number): GameSessionCommandResult {
+    const playback = this.playback;
+    if (!playback || this.game.state === "paused") return NO_RESULT;
+    const result = createResult();
+    if (this.game.state === "playing") {
+      this.advanceChallenge(deltaMs, result);
+      this.advanceProgression(deltaMs, result);
+    }
+    playback.elapsedMs += deltaMs;
+    const { steps, durationMs } = playback.timeline;
+    while (playback.stepIndex + 1 < steps.length && steps[playback.stepIndex + 1].atMs <= playback.elapsedMs) {
+      playback.stepIndex += 1;
+      this.presentationStep += 1;
+      const step = steps[playback.stepIndex];
+      result.sounds.push(...step.sounds);
+      result.effects.push(...step.effects);
+      result.shouldRender = true;
+    }
+    if (playback.elapsedMs >= durationMs) {
+      this.playback = null;
+      this.presentationStep += 1;
+      this.dropTimer = 0;
+      result.shouldRender = true;
+      result.shouldUpdateHud = true;
+    }
+    return result;
   }
 
   private advanceChallenge(deltaMs: number, result: GameSessionCommandResult): void {

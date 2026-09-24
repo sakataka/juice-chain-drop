@@ -1,9 +1,9 @@
 import { COLS, FRUITS, NEXT_QUEUE_SIZE, ROWS } from "./constants";
 import { applyGravity, createBoard, getPieceCells, isValidPiece, makeJuiceDrop, makePiece, movedPiece, rotatedPiece } from "./board";
 import { DEFAULT_DIFFICULTY, getDifficultyConfig } from "./difficulty";
-import { applyJuiceAwards, applyJuiceEffectRules, calculateJuiceEffectBonus, getJuiceEffectCenter, resolveBoardRules } from "./rules";
+import { applyJuiceAwards, applyJuiceEffectRules, cloneBoard, calculateJuiceEffectBonus, getJuiceEffectCenter, resolveBoardRules } from "./rules";
 import { initialFruitRecord, isWaterCell, randomFruit } from "./utils";
-import type { Board, DifficultyConfig, DifficultyId, Fruit, FruitPair, FruitRecord, GameState, GridPosition, JuiceEffectResult, NextPiecePreview, PairPiece, ResolveReport } from "./types";
+import type { Board, DifficultyConfig, DifficultyId, Fruit, FruitPair, FruitRecord, GameState, GridPosition, JuiceEffectResult, NextPiecePreview, PairPiece, ResolveFrame, ResolveReport } from "./types";
 
 type ResolveSource = "piece" | "juice";
 
@@ -173,7 +173,7 @@ export class GameModel {
   resolveBoard(source: ResolveSource): ResolveReport {
     this.state = "resolving";
     const turnMultiplier = source === "piece" ? this.nextPieceScoreMultiplier : 1;
-    const resolved = resolveBoardRules(this.board, { difficulty: this.difficulty, turnMultiplier });
+    const resolved = resolveBoardRules(this.board, { difficulty: this.difficulty, turnMultiplier, recordFrames: true });
     this.board = resolved.board;
     this.score += resolved.clearScore;
     const pressedJuices = this.applyJuiceAwards(resolved.juiceAwards);
@@ -183,7 +183,7 @@ export class GameModel {
 
     this.lastChain = resolved.chain;
     this.state = "playing";
-    return { chain: resolved.chain, popEvents: resolved.popEvents, waterClears: resolved.waterClears, pressedJuices };
+    return { chain: resolved.chain, popEvents: resolved.popEvents, waterClears: resolved.waterClears, frames: resolved.frames, pressedJuices };
   }
 
   awardJuice(removed: FruitRecord): void {
@@ -195,6 +195,10 @@ export class GameModel {
   }
 
   applyJuiceEffect(primary: Fruit): JuiceEffectResult {
+    return this.applyJuiceEffectWithFrames(primary).effect;
+  }
+
+  private applyJuiceEffectWithFrames(primary: Fruit): { effect: JuiceEffectResult; frames: ResolveFrame[] } {
     const center = this.getEffectCenter();
     if (primary === "melon") {
       this.slowTurns = 1;
@@ -202,7 +206,13 @@ export class GameModel {
     }
     const result = applyJuiceEffectRules(this.board, { primary, center, activeAxisFruit: this.active?.axis.fruit });
     this.board = result.board;
-    return result.effect;
+    return {
+      effect: result.effect,
+      frames: [
+        { kind: "burst", board: result.burstBoard, effect: result.effect, primary },
+        { kind: "collapse", board: cloneBoard(result.board), falls: result.falls },
+      ],
+    };
   }
 
   dropWater(): GridPosition | null {
@@ -240,13 +250,15 @@ export class GameModel {
 
   private settleJuiceDrop(fruit: Fruit): ResolveReport {
     if (this.slowTurns > 0) this.slowTurns -= 1;
-    const effect = this.applyJuiceEffect(fruit);
+    const { effect, frames } = this.applyJuiceEffectWithFrames(fruit);
     const bonusScore = calculateJuiceEffectBonus(fruit, effect.cells.length, this.difficulty);
     this.score += bonusScore;
     this.active = null;
     const report = this.resolveBoard("juice");
     this.spawnPiece(false);
-    return { ...report, juiceDrop: { effect, primary: fruit, bonusScore } };
+    // The effect already settled the board, so the resolve's own settle frame adds nothing.
+    const chainFrames = report.frames.filter((frame) => frame.kind !== "settle");
+    return { ...report, frames: [...frames, ...chainFrames], juiceDrop: { effect, primary: fruit, bonusScore } };
   }
 
   private applyJuiceAwards(awards: FruitRecord[]): Fruit[] {

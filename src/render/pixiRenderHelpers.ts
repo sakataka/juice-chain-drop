@@ -3,7 +3,7 @@ import { BOARD_X, BOARD_Y, CELL } from "../core";
 import type { Fruit, GridPosition } from "../core";
 import type { Particle, PixiRenderTextures } from "./renderTypes";
 
-const FRUIT_DRAW_SCALE = 1.12;
+export const FRUIT_DRAW_SCALE = 1.12;
 export const EFFECT_CREAM = 0xfff1bd;
 export const EFFECT_MINT = 0x39f0c2;
 export const EFFECT_ORANGE = 0xff9f2e;
@@ -54,60 +54,6 @@ export function addJuiceSprite(textures: PixiRenderTextures, layer: Container, f
   sprite.y = y;
   sprite.width = size;
   sprite.height = size;
-  sprite.alpha = alpha;
-  layer.addChild(sprite);
-}
-
-export function drawWaterCell(textures: PixiRenderTextures, layer: Container, x: number, y: number, alpha: number): void {
-  const left = BOARD_X + x * CELL + 6;
-  const top = BOARD_Y + y * CELL + 6;
-  if (textures.water) {
-    const glow = new Graphics();
-    glow.roundRect(left - 2, top - 2, CELL - 8, CELL - 8, 12).fill({ color: 0x65ddff, alpha: 0.18 * alpha });
-    layer.addChild(glow);
-    const sprite = new Sprite(textures.water);
-    sprite.x = left;
-    sprite.y = top;
-    sprite.width = CELL - 12;
-    sprite.height = CELL - 12;
-    sprite.alpha = alpha;
-    layer.addChild(sprite);
-    return;
-  }
-  const graphics = new Graphics();
-  graphics
-    .roundRect(left, top, CELL - 12, CELL - 12, 10)
-    .fill({ color: 0xc9f3ff, alpha: 0.58 * alpha })
-    .stroke({ color: 0xffffff, width: 3, alpha: 0.92 * alpha });
-  graphics.roundRect(left + 6, top + 5, CELL - 26, 10, 7).fill({ color: 0xffffff, alpha: 0.52 * alpha });
-  graphics.circle(left + 13, top + 24, 3).fill({ color: 0xffffff, alpha: 0.7 * alpha });
-  graphics.circle(left + 25, top + 29, 2.2).fill({ color: 0x6ecff6, alpha: 0.78 * alpha });
-  graphics.rect(left + 4, top + CELL - 22, CELL - 20, 6).fill({ color: 0x58c6ef, alpha: 0.28 * alpha });
-  layer.addChild(graphics);
-}
-
-export function addEffectSprite(textures: PixiRenderTextures, layer: Container, index: number, x: number, y: number, size: number, alpha: number, rotationDegrees = 0): void {
-  const texture = textures.effects[index];
-  if (!texture || alpha <= 0) return;
-  const sprite = new Sprite(texture);
-  sprite.anchor.set(0.5);
-  sprite.x = x;
-  sprite.y = y;
-  sprite.width = size;
-  sprite.height = size;
-  sprite.alpha = alpha;
-  sprite.rotation = (rotationDegrees * Math.PI) / 180;
-  layer.addChild(sprite);
-}
-
-export function addSplashSprite(textures: PixiRenderTextures, layer: Container, x: number, y: number, width: number, alpha: number, scaleY = 1): void {
-  if (!textures.splash || alpha <= 0) return;
-  const sprite = new Sprite(textures.splash);
-  sprite.anchor.set(0.5, 0.82);
-  sprite.x = x;
-  sprite.y = y;
-  sprite.width = width;
-  sprite.height = width * 0.62 * scaleY;
   sprite.alpha = alpha;
   layer.addChild(sprite);
 }

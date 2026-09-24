@@ -2,7 +2,7 @@ import { calculateClearScore, calculateJuiceUseBonus } from "./balance";
 import { applyGravity, findClearGroups, inBounds, neighbors } from "./board";
 import { COLS, FRUITS, ROWS } from "./constants";
 import { clamp, initialFruitRecord, isFruitCell, isWaterCell, positionsFromSet } from "./utils";
-import type { Board, ClearGroup, DifficultyConfig, Fruit, FruitRecord, GridPosition, JuiceEffectResult, PairPiece, ResolveReport } from "./types";
+import type { Board, ClearGroup, ClearPop, DifficultyConfig, FallMove, Fruit, FruitRecord, GridPosition, JuiceEffectResult, PairPiece, ResolveFrame, ResolveReport } from "./types";
 
 export type BoardResolveResult = ResolveReport & {
   board: Board;
@@ -25,44 +25,54 @@ export function cloneFruitRecord(record: FruitRecord): FruitRecord {
   return { apple: record.apple, orange: record.orange, lemon: record.lemon, grape: record.grape, melon: record.melon, berry: record.berry };
 }
 
-export function resolveBoardRules(board: Board, options: { difficulty: DifficultyConfig; turnMultiplier?: number }): BoardResolveResult {
+/**
+ * Settles and clears the board until no group remains. `recordFrames` keeps a copy of
+ * every step for playback; search code leaves it off because it runs this thousands of times.
+ */
+export function resolveBoardRules(board: Board, options: { difficulty: DifficultyConfig; turnMultiplier?: number; recordFrames?: boolean }): BoardResolveResult {
   const copy = cloneBoard(board);
   const turnMultiplier = options.turnMultiplier ?? 1;
+  const frames: ResolveFrame[] = [];
   let chain = 0;
   let removed = 0;
   let clearScore = 0;
-  const popEvents: BoardResolveResult["popEvents"] = [];
+  const popEvents: ClearPop[] = [];
   const waterClears: GridPosition[] = [];
   const removedByFruit = initialFruitRecord(0);
   const juiceAwards: FruitRecord[] = [];
 
+  let falls: FallMove[] = applyGravity(copy);
+  if (options.recordFrames) frames.push({ kind: "settle", board: cloneBoard(copy), falls });
+
   while (true) {
-    applyGravity(copy);
     const groups = findClearGroups(copy);
     if (groups.length === 0) break;
 
     chain += 1;
     const removedThisChain = initialFruitRecord(0);
     const clearedFruitCells: GridPosition[] = [];
-    const popCells: GridPosition[] = [];
+    const pops: ClearPop[] = [];
     let removedCount = 0;
-    let popFruit: Fruit | null = null;
 
     for (const group of groups) {
-      popFruit ??= group.fruit;
+      const popCells: GridPosition[] = [];
       removedCount += removeGroup(copy, group, removedThisChain, removedByFruit, clearedFruitCells, popCells);
+      if (popCells.length > 0) pops.push({ fruit: group.fruit, chain, cells: popCells });
     }
 
-    waterClears.push(...clearAdjacentWater(copy, clearedFruitCells));
+    const chainWaterClears = clearAdjacentWater(copy, clearedFruitCells);
+    waterClears.push(...chainWaterClears);
     removed += removedCount;
     juiceAwards.push(removedThisChain);
     clearScore += calculateClearScore(removedCount, chain, turnMultiplier, options.difficulty.scoreMultiplier);
-    if (popFruit) {
-      popEvents.push({ fruit: popFruit, chain, cells: popCells });
-    }
+    popEvents.push(...pops);
+    if (options.recordFrames) frames.push({ kind: "pop", chain, board: cloneBoard(copy), pops, waterClears: chainWaterClears });
+
+    falls = applyGravity(copy);
+    if (options.recordFrames) frames.push({ kind: "collapse", board: cloneBoard(copy), falls });
   }
 
-  return { board: copy, chain, popEvents, waterClears, clearScore, removed, removedByFruit, juiceAwards };
+  return { board: copy, chain, popEvents, waterClears, frames, clearScore, removed, removedByFruit, juiceAwards };
 }
 
 export function applyJuiceAwards(input: {
@@ -96,7 +106,10 @@ export function getJuiceEffectCenter(active: PairPiece | null): GridPosition {
   };
 }
 
-export function applyJuiceEffectRules(board: Board, input: { primary: Fruit; center: GridPosition; activeAxisFruit?: Fruit }): { board: Board; effect: JuiceEffectResult } {
+export function applyJuiceEffectRules(
+  board: Board,
+  input: { primary: Fruit; center: GridPosition; activeAxisFruit?: Fruit },
+): { board: Board; effect: JuiceEffectResult; burstBoard: Board; falls: FallMove[] } {
   const copy = cloneBoard(board);
   const changedCells = new Set<string>();
 
@@ -107,8 +120,9 @@ export function applyJuiceEffectRules(board: Board, input: { primary: Fruit; cen
   if (input.primary === "melon") clearDiamond(copy, input.center, 2, changedCells);
   if (input.primary === "berry") transformNearby(copy, input.center, 5, getMostCommonBoardFruit(copy) ?? input.activeAxisFruit ?? input.primary, changedCells);
 
-  applyGravity(copy);
-  return { board: copy, effect: { center: input.center, cells: positionsFromSet(changedCells) } };
+  const burstBoard = cloneBoard(copy);
+  const falls = applyGravity(copy);
+  return { board: copy, effect: { center: input.center, cells: positionsFromSet(changedCells) }, burstBoard, falls };
 }
 
 function removeGroup(

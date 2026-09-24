@@ -1,11 +1,15 @@
 import type { Texture } from "pixi.js";
-import type { Board, Fruit, GameState, GridPosition, NextPiecePreview, PairPiece, ProgressionStage } from "../core";
+import type { Board, FallMove, Fruit, GameState, GridPosition, NextPiecePreview, PairPiece, ProgressionStage } from "../core";
 
 export type RenderSnapshot = {
   board: Board;
   active: PairPiece | null;
   nextPreviews: NextPiecePreview[];
   state: GameState;
+  /** Cells that just dropped into place in this presentation step. */
+  falls: FallMove[];
+  /** Changes whenever the shown board step changes, so motion starts once per step. */
+  presentationStep: number;
 };
 
 export type Particle = {
@@ -40,6 +44,8 @@ export type VisualEffect =
       chain: number;
       intensity: number;
       particles: Particle[];
+      /** Only the newest chain step draws the board-wide banner and splash, once per step. */
+      showsBanner: boolean;
     }
   | {
       kind: "stageAdvance";

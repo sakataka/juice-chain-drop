@@ -4,6 +4,7 @@ import { DIFFICULTY_CONFIGS, makeJuiceDrop } from "../core";
 import type { Board, Fruit, GameSettings } from "../core";
 import type { PlayerStats } from "../storage/stats";
 import { GameSession } from "./gameSession";
+import type { SoundCue, VisualEffectCue } from "./gameSession";
 
 const settings: GameSettings = {
   difficulty: "normal",
@@ -124,6 +125,65 @@ describe("GameSession", () => {
     expect(second.gameOverRecorded).toBe(false);
     expect(savedStats).toHaveLength(1);
     expect(savedStats[0].playCount).toBe(1);
+  });
+
+  it("replays a chain step by step while holding piece input", () => {
+    const { session, game } = createSession();
+    session.start();
+    game.board = createTwoChainBoard();
+    game.active = { axis: { x: 5, y: 0, fruit: "grape" }, satellite: { fruit: "grape", rotation: 0 } };
+    const finalBoard = () => game.board.map((row) => [...row]);
+
+    const drop = session.hardDrop();
+    const settled = finalBoard();
+
+    expect(drop.effects.some((effect) => effect.kind === "clearPop")).toBe(false);
+    expect(session.isResolving()).toBe(true);
+    expect(session.getRenderSnapshot()).toMatchObject({ state: "resolving", active: null });
+    expect(session.getRenderSnapshot().board).not.toEqual(settled);
+    expect(session.getHudSnapshot().state).toBe("resolving");
+    expect(session.move(-1)).toBe(session.move(-1));
+    expect(session.move(-1).shouldRender).toBe(false);
+    expect(session.getRenderSnapshot().nextPreviews[0]).toEqual({ kind: "fruitPair", pair: [game.active!.axis.fruit, game.active!.satellite.fruit] });
+
+    const firstPop = session.tick(100);
+    expect(firstPop.effects).toContainEqual(expect.objectContaining({ kind: "clearPop", fruit: "apple", chain: 1 }));
+    expect(firstPop.sounds).toContainEqual({ kind: "splash", chain: 1, fruit: "apple" });
+
+    const rest = finishPlayback(session);
+    expect(rest.effects).toContainEqual(expect.objectContaining({ kind: "clearPop", fruit: "orange", chain: 2 }));
+    expect(rest.sounds).toContainEqual({ kind: "sparkle", chain: 2 });
+    expect(session.isResolving()).toBe(false);
+    expect(session.getRenderSnapshot().board).toEqual(settled);
+    expect(session.getRenderSnapshot().active).toBe(game.active);
+    expect(session.move(-1).shouldUpdateHud).toBe(true);
+  });
+
+  it("does not replay quiet landings", () => {
+    const { session } = createSession();
+    session.start();
+
+    session.hardDrop();
+
+    expect(session.isResolving()).toBe(false);
+    expect(session.getRenderSnapshot().state).toBe("playing");
+  });
+
+  it("freezes chain playback while paused and does not let gravity drop the next piece", () => {
+    const { session, game } = createSession();
+    session.start();
+    game.board = createTwoChainBoard();
+    game.active = { axis: { x: 5, y: 0, fruit: "grape" }, satellite: { fruit: "grape", rotation: 0 } };
+    session.hardDrop();
+    const spawnedY = game.active?.axis.y;
+
+    session.togglePause();
+    expect(session.tick(10_000).shouldRender).toBe(false);
+    expect(session.isResolving()).toBe(true);
+    session.togglePause();
+    finishPlayback(session);
+
+    expect(game.active?.axis.y).toBe(spawnedY);
   });
 
   it("keeps Auto Play runs out of the player's personal records", () => {
@@ -248,8 +308,9 @@ describe("GameSession", () => {
     game.board = createWaterClearBoard();
 
     const result = session.hardDrop();
+    const playback = finishPlayback(session);
 
-    expect(result.effects.some((effect) => effect.kind === "waterClear")).toBe(true);
+    expect(playback.effects.some((effect) => effect.kind === "waterClear")).toBe(true);
     expect(result.sounds).toContainEqual({ kind: "fanfare" });
     expect(session.getRenderSnapshot().state).toBe("gameover");
     expect(session.getHudSnapshot().challenge.progress).toBe("0 / 30 water, 0.0s");
@@ -269,6 +330,8 @@ describe("GameSession", () => {
 
     expect(result.gameOverRecorded).toBe(true);
     expect(result.sounds).toContainEqual({ kind: "fanfare" });
+    expect(session.getRenderSnapshot().state).toBe("resolving");
+    finishPlayback(session);
     expect(session.getRenderSnapshot().state).toBe("gameover");
     expect(session.getHudSnapshot().challenge.result).toBe("Success");
     expect(session.getHudSnapshot().challenge.resultTitle).toBe("Water Cleanup Clear");
@@ -304,6 +367,23 @@ function fixedGame(sequence: Fruit[] = ["apple", "orange", "lemon", "grape", "me
     index += 1;
     return fruitIndex / 6 + 0.01;
   });
+}
+
+function finishPlayback(session: GameSession): { sounds: SoundCue[]; effects: VisualEffectCue[] } {
+  const merged: { sounds: SoundCue[]; effects: VisualEffectCue[] } = { sounds: [], effects: [] };
+  for (let guard = 0; guard < 200 && session.isResolving(); guard += 1) {
+    const result = session.tick(50);
+    merged.sounds.push(...result.sounds);
+    merged.effects.push(...result.effects);
+  }
+  return merged;
+}
+
+/** Apples clear first, then the orange column falls onto the floor row and clears as chain 2. */
+function createTwoChainBoard(): Board {
+  const rows = ["......", "......", "......", "......", "......", "......", "......", "......", "o.....", "a.....", "aooo..", "aa...."];
+  const map: Record<string, Fruit | null> = { ".": null, a: "apple", o: "orange" };
+  return rows.map((row) => [...row].map((cell) => map[cell])) as Board;
 }
 
 function createWaterClearBoard(): Board {

@@ -150,7 +150,7 @@ function runRound(options: Required<AiSimulationOptions>, roundIndex: number): I
   let maxChainPotentialEvaluations = 0;
   let bestChain = 0;
 
-  while (session.getRenderSnapshot().state === "playing" && simulatedMs < options.maxSimulatedMs) {
+  while (session.getRenderSnapshot().state !== "gameover" && simulatedMs < options.maxSimulatedMs) {
     const sessionResult = session.tick(options.tickMs);
     const aiResult = runner.tick(options.tickMs);
     if (sessionResult.gameOverRecorded || aiResult?.gameOverRecorded) runner.setEnabled(false);

@@ -23,6 +23,7 @@ type DebugState = {
   lastError: string | null;
   lastResult: GameSessionCommandResult | null;
   juiceSplashes: number;
+  effectCounts: Partial<Record<VisualEffectCue["kind"], number>>;
 };
 
 type SoundCueHandlers = {
@@ -72,6 +73,7 @@ const debugState: DebugState = {
   lastError: null,
   lastResult: null,
   juiceSplashes: 0,
+  effectCounts: {},
 };
 installDebugHook();
 
@@ -186,6 +188,7 @@ function dispatch(result: GameSessionCommandResult): void {
     }
     for (const cue of result.effects) {
       if (cue.kind === "juiceSplash") debugState.juiceSplashes += 1;
+      debugState.effectCounts[cue.kind] = (debugState.effectCounts[cue.kind] ?? 0) + 1;
       playVisualEffect(cue);
     }
     if (result.shouldUpdateHud) {
@@ -254,7 +257,7 @@ function aiIntervalForSpeed(speed: AiSpeed): number {
 
 function installDebugHook(): void {
   window.__juiceDebug = () => ({
-    debug: { ...debugState },
+    debug: { ...debugState, effectCounts: { ...debugState.effectCounts } },
     render: session.getRenderSnapshot(),
     hud: session.getHudSnapshot(),
     ai: aiRunner.getState(),

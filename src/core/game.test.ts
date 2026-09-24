@@ -10,6 +10,61 @@ describe("board rules", () => {
     expect(board.flat().every((cell) => cell === null)).toBe(true);
   });
 
+  it("records each chain step as playback frames with fall moves", () => {
+    const board = boardFromRows([
+      "......",
+      "......",
+      "......",
+      "......",
+      "......",
+      "......",
+      "......",
+      "......",
+      "o.....",
+      "a.....",
+      "aooo..",
+      "aa....",
+    ]);
+
+    const result = resolveBoardRules(board, { difficulty: getDifficultyConfig("normal"), recordFrames: true });
+
+    expect(result.chain).toBe(2);
+    expect(result.frames.map((frame) => frame.kind)).toEqual(["settle", "pop", "collapse", "pop", "collapse"]);
+    const [, firstPop, firstCollapse, secondPop, finalCollapse] = result.frames;
+    expect(firstPop.kind === "pop" && firstPop.pops).toEqual([{ fruit: "apple", chain: 1, cells: expect.arrayContaining([{ x: 0, y: 9 }, { x: 1, y: 11 }]) }]);
+    expect(firstPop.board[9][0]).toBeNull();
+    expect(firstPop.board[8][0]).toBe("orange");
+    expect(firstCollapse.kind === "collapse" && firstCollapse.falls).toEqual([{ x: 0, fromY: 8, toY: 11 }, { x: 1, fromY: 10, toY: 11 }]);
+    expect(secondPop.kind === "pop" && secondPop.pops[0]).toMatchObject({ fruit: "orange", chain: 2 });
+    expect(finalCollapse.board).toEqual(result.board);
+  });
+
+  it("reports simultaneous clears as one pop per fruit group", () => {
+    const board = boardFromRows(["......", "......", "......", "......", "......", "......", "......", "......", "......", "......", "....oo", "aaaaoo"]);
+
+    const result = resolveBoardRules(board, { difficulty: getDifficultyConfig("normal") });
+
+    expect(result.popEvents.map((pop) => [pop.fruit, pop.cells.length])).toEqual([
+      ["orange", 4],
+      ["apple", 4],
+    ]);
+    expect(result.frames).toEqual([]);
+  });
+
+  it("records a landing bottle as a burst frame before the board collapses", () => {
+    const game = fixedGame();
+    game.start();
+    game.board = boardFromRows(["......", "......", "......", "......", "......", "......", "......", "......", "......", "..g...", "..o...", "..l..."]);
+    game.active = { ...makeJuiceDrop("apple"), axis: { x: 1, y: 10, fruit: "apple" } };
+
+    const report = game.settlePiece();
+
+    expect(report?.frames.map((frame) => frame.kind)).toEqual(["burst", "collapse"]);
+    const burstFrame = report?.frames[0];
+    expect(burstFrame?.kind === "burst" && burstFrame.board[9][2]).toBeNull();
+    expect(report?.frames.at(-1)?.board).toEqual(game.board);
+  });
+
   it("finds orthogonal groups of four or more only", () => {
     const board = createBoard();
     board[11][0] = "apple";
@@ -70,10 +125,10 @@ describe("board rules", () => {
       "aaaa..",
     ]);
 
-    const pure = resolveBoardRules(board, { difficulty: game.difficulty });
+    const pure = resolveBoardRules(board, { difficulty: game.difficulty, recordFrames: true });
     const report = game.resolveBoard("piece");
 
-    expect(report).toEqual({ chain: pure.chain, popEvents: pure.popEvents, waterClears: pure.waterClears, pressedJuices: ["apple"] });
+    expect(report).toEqual({ chain: pure.chain, popEvents: pure.popEvents, waterClears: pure.waterClears, frames: pure.frames, pressedJuices: ["apple"] });
     expect(game.board).toEqual(pure.board);
     expect(game.score).toBe(pure.clearScore);
     expect(game.juiceStock.apple).toBe(1);
@@ -634,8 +689,8 @@ describe("game model", () => {
     const report = game.resolveBoard("piece");
 
     expect(report.chain).toBe(1);
-    expect(report.popEvents).toHaveLength(1);
-    expect(report.popEvents[0].cells).toHaveLength(8);
+    expect(report.popEvents).toHaveLength(2);
+    expect(report.popEvents.map((pop) => pop.cells.length)).toEqual([4, 4]);
     expect(game.score).toBe(400);
     expect(game.juiceStock.apple).toBe(1);
     expect(game.juiceStock.orange).toBe(1);

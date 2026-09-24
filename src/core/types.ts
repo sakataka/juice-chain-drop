@@ -70,16 +70,34 @@ export type JuiceEffectResult = {
   cells: GridPosition[];
 };
 
-type ClearPop = {
+export type ClearPop = {
   fruit: Fruit;
   chain: number;
   cells: GridPosition[];
 };
 
+/** A cell that dropped from fromY to toY in column x when gravity settled the board. */
+export type FallMove = {
+  x: number;
+  fromY: number;
+  toY: number;
+};
+
+/**
+ * Presentation snapshots of one resolve, in order. The rules resolve instantly;
+ * these frames let the session replay chains step by step without re-running rules.
+ */
+export type ResolveFrame =
+  | { kind: "settle"; board: Board; falls: FallMove[] }
+  | { kind: "burst"; board: Board; effect: JuiceEffectResult; primary: Fruit }
+  | { kind: "pop"; chain: number; board: Board; pops: ClearPop[]; waterClears: GridPosition[] }
+  | { kind: "collapse"; board: Board; falls: FallMove[] };
+
 export type ResolveReport = {
   chain: number;
   popEvents: ClearPop[];
   waterClears: GridPosition[];
+  frames: ResolveFrame[];
   pressedJuices?: Fruit[];
   juiceDrop?: {
     effect: JuiceEffectResult;
