@@ -15,8 +15,17 @@ export type DifficultyConfig = {
   dropInterval: number;
   slowDropInterval: number;
   scoreMultiplier: number;
+  /** Press units per bottle; a fruit cleared in chain step k presses k units. */
   juiceThreshold: number;
+  waterPressure: WaterPressureConfig;
   progressionStageDurationMs: number;
+};
+
+export type WaterPressureConfig = {
+  /** Water lands after every Nth placed fruit pair. */
+  everyPieces: number;
+  /** One more drop per landing for every this many pieces placed, without a cap. */
+  rampPieces: number;
 };
 
 export type GameModeConfig = {
@@ -27,6 +36,8 @@ export type GameModeConfig = {
   targetWaterClears?: number;
   initialWaterCount?: number;
   durationMs?: number;
+  /** Whether timed water pressure pushes back in this mode. */
+  waterPressure?: boolean;
 };
 
 export type GameSettings = {

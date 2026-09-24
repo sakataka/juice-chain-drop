@@ -217,7 +217,8 @@ export class GameModel {
 
   dropWater(): GridPosition | null {
     if (this.state !== "playing") return null;
-    const columns = Array.from({ length: COLS }, (_, x) => x).filter((x) => this.board[0][x] === null);
+    // Water must settle at row 2 or lower so it never blocks the spawn rows.
+    const columns = Array.from({ length: COLS }, (_, x) => x).filter((x) => this.board[2][x] === null);
     if (columns.length === 0) return null;
     const x = columns[Math.floor(this.rng() * columns.length)];
     this.board[0][x] = "water";

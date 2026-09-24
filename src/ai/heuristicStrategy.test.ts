@@ -39,7 +39,7 @@ describe("heuristic AI strategy", () => {
       "aaa...",
     ]);
 
-    const decision = heuristicAiStrategy.choose(createSnapshot(game));
+    const decision = heuristicAiStrategy.choose(createSnapshot(game, { mode: "scoreAttack" }));
 
     expect(decision.reason).toContain("r4");
     expect(decision.commands.at(-1)).toEqual({ kind: "hardDrop" });
@@ -154,10 +154,10 @@ describe("heuristic AI strategy", () => {
       "oo.l..",
     ]);
 
-    const normal = heuristicAiStrategy.choose(createSnapshot(game));
+    const rush = heuristicAiStrategy.choose(createSnapshot(game, { mode: "scoreAttack" }));
     const chain = heuristicAiStrategy.choose(createSnapshot(game, { mode: "chainChallenge", runBestChain: 0 }));
 
-    expect(chain.score).toBeGreaterThan(normal.score);
+    expect(chain.score).toBeGreaterThan(rush.score);
     expect(chain.reason).toContain("Lookahead");
   });
 
@@ -180,13 +180,16 @@ describe("heuristic AI strategy", () => {
       "aaa...",
     ]);
 
+    const rush = heuristicAiStrategy.choose(createSnapshot(game, { mode: "scoreAttack" }));
     const normal = heuristicAiStrategy.choose(createSnapshot(game));
     const chain = heuristicAiStrategy.choose(createSnapshot(game, { mode: "chainChallenge", runBestChain: 2 }));
 
-    expect(normal.reason).toContain("c1");
+    expect(rush.reason).toContain("c1");
+    expect(normal.phase).toBe("chainBuild");
+    expect(normal.reason).toContain("c0");
     expect(chain.phase).toBe("chainBuild");
     expect(chain.reason).toContain("c0");
-    expect(chain.commands).not.toEqual(normal.commands);
+    expect(chain.commands).not.toEqual(rush.commands);
     expect(chain.chainPotentialEvaluations).toBeLessThanOrEqual(DEFAULT_AI_POLICY.chainPotentialBudget);
   });
 
@@ -310,10 +313,10 @@ describe("heuristic AI strategy", () => {
       "aaaw..",
     ]);
 
-    const normal = heuristicAiStrategy.choose(createSnapshot(game));
+    const rush = heuristicAiStrategy.choose(createSnapshot(game, { mode: "scoreAttack" }));
     const cleanup = heuristicAiStrategy.choose(createSnapshot(game, { mode: "waterCleanup", runWaterClears: 0 }));
 
-    expect(cleanup.score).toBeGreaterThan(normal.score);
+    expect(cleanup.score).toBeGreaterThan(rush.score);
     expect(cleanup.phase).toBe("waterClear");
   });
 
@@ -438,7 +441,7 @@ describe("heuristic AI strategy", () => {
         juiceAwards: [{ apple: 4, orange: 0, lemon: 0, grape: 0, melon: 0, berry: 0 }],
         landingY: 11,
       },
-      game.difficulty,
+      { ...game.difficulty, juiceThreshold: 4 },
     );
 
     expect(next.juiceStock.apple).toBe(1);

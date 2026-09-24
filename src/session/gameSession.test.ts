@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import { GameModel } from "../core/game";
-import { DIFFICULTY_CONFIGS, makeJuiceDrop } from "../core";
+import { createBoard, DIFFICULTY_CONFIGS, makeJuiceDrop } from "../core";
 import type { Board, Fruit, GameSettings } from "../core";
 import type { PlayerStats } from "../storage/stats";
 import { GameSession } from "./gameSession";
@@ -43,7 +43,7 @@ describe("GameSession", () => {
   it("turns a completed press into a falling bottle with pour and splash feedback", () => {
     const { session, game } = createSession();
     session.start();
-    game.awardJuice({ apple: 4, orange: 0, lemon: 0, grape: 0, melon: 0, berry: 0 });
+    game.awardJuice({ apple: game.difficulty.juiceThreshold, orange: 0, lemon: 0, grape: 0, melon: 0, berry: 0 });
 
     const bottleReady = session.hardDrop();
     expect(session.getRenderSnapshot().active?.kind).toBe("juiceDrop");
@@ -254,13 +254,57 @@ describe("GameSession", () => {
     expect(session.getHudSnapshot().challenge.resultDetailValue).toBe("0 chain");
   });
 
-  it("does not inject timed water into normal mode", () => {
+  it("dilutes the vat with water on the Normal piece interval", () => {
     const { session, game } = createSession();
     session.start();
+    const pressure = DIFFICULTY_CONFIGS.normal.waterPressure;
+    const drops: VisualEffectCue[] = [];
 
-    const result = session.tick(30_000);
-    expect(result.effects.some((effect) => effect.kind === "waterDrop")).toBe(false);
-    expect(game.board.flat()).not.toContain("water");
+    for (let piece = 1; piece < pressure.everyPieces; piece += 1) {
+      game.board = createBoard();
+      drops.push(...session.hardDrop().effects);
+    }
+    game.board = createBoard();
+    expect(drops.filter((effect) => effect.kind === "waterDrop")).toHaveLength(0);
+    expect(session.getHudSnapshot().waterIncoming).toEqual({ inPieces: 1, drops: 1 });
+
+    const due = session.hardDrop();
+
+    expect(due.effects.filter((effect) => effect.kind === "waterDrop")).toHaveLength(1);
+    expect(game.countWaterCells()).toBe(1);
+    expect(game.board.slice(0, 2).flat()).not.toContain("water");
+  });
+
+  it("waits for a chain to finish before water lands", () => {
+    const { session, game } = createSession();
+    session.start();
+    const pressure = DIFFICULTY_CONFIGS.normal.waterPressure;
+    for (let piece = 1; piece < pressure.everyPieces; piece += 1) {
+      game.board = createBoard();
+      session.hardDrop();
+    }
+    game.board = createTwoChainBoard();
+    game.active = { axis: { x: 5, y: 0, fruit: "grape" }, satellite: { fruit: "grape", rotation: 0 } };
+
+    const drop = session.hardDrop();
+    expect(drop.effects.some((effect) => effect.kind === "waterDrop")).toBe(false);
+    const playback = finishPlayback(session);
+
+    expect(playback.effects.filter((effect) => effect.kind === "waterDrop")).toHaveLength(1);
+    expect(game.countWaterCells()).toBe(1);
+  });
+
+  it("keeps water pressure out of Chain Challenge", () => {
+    const { session, game } = createSession({ settings: { ...settings, mode: "chainChallenge" } });
+    session.start();
+
+    for (let piece = 0; piece < DIFFICULTY_CONFIGS.normal.waterPressure.everyPieces * 2; piece += 1) {
+      game.board = createBoard();
+      session.hardDrop();
+    }
+
+    expect(game.countWaterCells()).toBe(0);
+    expect(session.getHudSnapshot().waterIncoming).toBeNull();
   });
 
   it("raises progression stage over time and speeds automatic drops", () => {

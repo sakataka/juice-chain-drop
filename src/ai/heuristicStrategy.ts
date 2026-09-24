@@ -38,7 +38,7 @@ export const heuristicAiStrategy: AiStrategy = {
     const metrics = getBoardMetrics(snapshot.board);
     const bestImmediateChain = Math.max(0, ...rootCandidates.map((candidate) => candidate.chain));
     const bestBuildPotential =
-      snapshot.settings.mode === "chainChallenge"
+      objective.usesBuildPotential
         ? Math.max(
             0,
             ...rootCandidates
@@ -53,7 +53,7 @@ export const heuristicAiStrategy: AiStrategy = {
     if (!placement.first) return decision(snapshot.settings.mode, phase, [{ kind: "hardDrop" }], -10_000, "No legal AI placement", placement.evaluated, chainPotentialCache.size);
 
     const resultMetrics = getBoardMetrics(placement.first.board);
-    const potential = snapshot.settings.mode === "chainChallenge" ? getChainPotential(placement.first.board, difficulty, chainPotentialCache) : { bestTriggerChain: 0, triggerOptions: 0 };
+    const potential = objective.usesBuildPotential ? getChainPotential(placement.first.board, difficulty, chainPotentialCache) : { bestTriggerChain: 0, triggerOptions: 0 };
     const action = snapshot.active.kind === "juiceDrop" ? `Juice Drop ${snapshot.active.axis.fruit}` : `Lookahead d${DEFAULT_AI_POLICY.searchDepth}`;
     const reason = `${snapshot.settings.mode}/${phase} ${action} c${placement.first.chain} r${placement.first.removed} potential${potential.bestTriggerChain} risk${resultMetrics.topRisk}`;
     return decision(snapshot.settings.mode, phase, placement.first.commands, placement.score, reason, placement.evaluated, chainPotentialCache.size);

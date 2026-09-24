@@ -8,7 +8,8 @@ export const DIFFICULTY_CONFIGS: Record<DifficultyId, DifficultyConfig> = {
     dropInterval: 760,
     slowDropInterval: 1040,
     scoreMultiplier: DIFFICULTY_SCORE_MULTIPLIERS.easy,
-    juiceThreshold: 3,
+    juiceThreshold: 18,
+    waterPressure: { everyPieces: 6, rampPieces: 120 },
     progressionStageDurationMs: 75_000,
   },
   normal: {
@@ -17,7 +18,8 @@ export const DIFFICULTY_CONFIGS: Record<DifficultyId, DifficultyConfig> = {
     dropInterval: 620,
     slowDropInterval: 880,
     scoreMultiplier: DIFFICULTY_SCORE_MULTIPLIERS.normal,
-    juiceThreshold: 4,
+    juiceThreshold: 24,
+    waterPressure: { everyPieces: 6, rampPieces: 90 },
     progressionStageDurationMs: 60_000,
   },
   hard: {
@@ -26,7 +28,8 @@ export const DIFFICULTY_CONFIGS: Record<DifficultyId, DifficultyConfig> = {
     dropInterval: 500,
     slowDropInterval: 720,
     scoreMultiplier: DIFFICULTY_SCORE_MULTIPLIERS.hard,
-    juiceThreshold: 5,
+    juiceThreshold: 30,
+    waterPressure: { everyPieces: 4, rampPieces: 60 },
     progressionStageDurationMs: 60_000,
   },
 };

@@ -46,6 +46,10 @@ export type AiSimulationRound = {
   decisions: number;
   score: number;
   bestChain: number;
+  juiceDrops: number;
+  waterDropped: number;
+  /** Average of the tallest column sampled every checkpoint, a proxy for board tension. */
+  meanMaxHeight: number;
   maxDecisionMs: number;
   p95DecisionMs: number;
   maxChainPotentialEvaluations: number;
@@ -149,14 +153,17 @@ function runRound(options: Required<AiSimulationOptions>, roundIndex: number): I
   let lastDecisionCount = 0;
   let maxChainPotentialEvaluations = 0;
   let bestChain = 0;
+  let waterDropped = 0;
 
-  while (session.getRenderSnapshot().state !== "gameover" && simulatedMs < options.maxSimulatedMs) {
+  // The model ends the run; a chain replay after the final placement is presentation only.
+  while (game.state !== "gameover" && simulatedMs < options.maxSimulatedMs) {
     const sessionResult = session.tick(options.tickMs);
     const aiResult = runner.tick(options.tickMs);
     if (sessionResult.gameOverRecorded || aiResult?.gameOverRecorded) runner.setEnabled(false);
     simulatedMs += options.tickMs;
     ticks += 1;
     if (aiResult?.sounds.some((cue) => cue.kind === "tap")) pieces += 1;
+    for (const result of [sessionResult, aiResult]) waterDropped += result?.effects.filter((effect) => effect.kind === "waterDrop").length ?? 0;
 
     const runnerState = runner.getState();
     if (runnerState.decisionCount > lastDecisionCount) {
@@ -190,7 +197,7 @@ function runRound(options: Required<AiSimulationOptions>, roundIndex: number): I
   return {
     round: roundIndex + 1,
     seed,
-    result: challengeComplete ? "challengeComplete" : snapshot.state === "gameover" ? "topOut" : "durationComplete",
+    result: challengeComplete ? "challengeComplete" : game.state === "gameover" ? "topOut" : "durationComplete",
     simulatedMs,
     wallMs,
     ticks,
@@ -198,6 +205,9 @@ function runRound(options: Required<AiSimulationOptions>, roundIndex: number): I
     decisions: runner.getState().decisionCount,
     score: snapshot.score,
     bestChain: snapshot.challenge.runBestChain,
+    juiceDrops: session.getHudSnapshot().juiceDropsCreated,
+    waterDropped,
+    meanMaxHeight: checkpoints.reduce((total, checkpoint) => total + checkpoint.maxHeight, 0) / Math.max(1, checkpoints.length),
     maxDecisionMs: Math.max(0, ...decisionTimes),
     p95DecisionMs: percentile(decisionTimes, 0.95),
     maxChainPotentialEvaluations,

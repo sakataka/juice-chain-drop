@@ -17,6 +17,8 @@ export type HudSnapshot = {
   juiceProgress: FruitRecord;
   juiceDropsCreated: number;
   queuedJuiceDrops: Fruit[];
+  /** Pieces until the next water pressure drop, or null when the mode has none. */
+  waterIncoming: { inPieces: number; drops: number } | null;
   soundEnabled: boolean;
   stats: PlayerStats;
   settings: GameSettings;
@@ -261,7 +263,7 @@ function getSpriteBackgroundPosition(fruit: Fruit): string {
 
 function getDifficultyTitle(difficulty: DifficultyId): string {
   const config = DIFFICULTY_CONFIGS[difficulty];
-  return `${config.label}: drop ${config.dropInterval}ms, bottle every ${config.juiceThreshold} cleared fruit`;
+  return `${config.label}: drop ${config.dropInterval}ms, bottle every ${config.juiceThreshold} press (chain step k presses k per fruit), water every ${config.waterPressure.everyPieces} pieces`;
 }
 
 function setCardLabel(value: HTMLElement, label: string): void {

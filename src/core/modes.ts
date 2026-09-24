@@ -5,12 +5,14 @@ export const GAME_MODE_CONFIGS: Record<GameModeId, GameModeConfig> = {
     id: "normal",
     label: "Normal",
     description: "Endless score play",
+    waterPressure: true,
   },
   scoreAttack: {
     id: "scoreAttack",
     label: "Score Attack",
     description: "Race to 50,000 points",
     targetScore: 50_000,
+    waterPressure: true,
   },
   chainChallenge: {
     id: "chainChallenge",

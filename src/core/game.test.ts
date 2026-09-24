@@ -108,7 +108,7 @@ describe("board rules", () => {
       "w.....",
       "aaaa..",
     ]);
-    const game = fixedGame();
+    const game = pressEvery(fixedGame(), 4);
     game.state = "playing";
     game.board = boardFromRows([
       "......",
@@ -305,7 +305,7 @@ describe("game model", () => {
   });
 
   it("resolves clears, awards juice, and tracks score", () => {
-    const game = fixedGame();
+    const game = pressEvery(fixedGame(), 4);
     game.state = "playing";
     game.board = boardFromRows([
       "......",
@@ -332,7 +332,7 @@ describe("game model", () => {
   });
 
   it("clears only orthogonally adjacent water when fruit clears", () => {
-    const game = fixedGame();
+    const game = pressEvery(fixedGame(), 4);
     game.state = "playing";
     game.board = boardFromRows([
       "......",
@@ -392,7 +392,8 @@ describe("game model", () => {
     ]);
 
     easy.resolveBoard("piece");
-    expect(easy.juiceStock.apple).toBe(1);
+    expect(easy.juiceProgress.apple).toBe(4);
+    expect(easy.score).toBe(180);
 
     const hard = fixedGame();
     hard.start({ difficulty: "hard" });
@@ -415,12 +416,14 @@ describe("game model", () => {
     expect(hard.score).toBe(250);
     expect(hard.juiceStock.apple).toBe(0);
     expect(hard.juiceProgress.apple).toBe(4);
+    expect(getDifficultyConfig("easy").juiceThreshold).toBeLessThan(getDifficultyConfig("normal").juiceThreshold);
+    expect(getDifficultyConfig("normal").juiceThreshold).toBeLessThan(getDifficultyConfig("hard").juiceThreshold);
     expect(getDifficultyConfig("hard").dropInterval).toBeLessThan(getDifficultyConfig("normal").dropInterval);
   });
 
   it("does not cap normal juice stock and keeps remainder progress", () => {
     const game = fixedGame();
-    game.awardJuice({ apple: 20, orange: 0, lemon: 0, grape: 0, melon: 0, berry: 0 });
+    game.awardJuice({ apple: game.difficulty.juiceThreshold * 5, orange: 0, lemon: 0, grape: 0, melon: 0, berry: 0 });
 
     expect(game.juiceStock.apple).toBe(5);
     expect(game.juiceProgress.apple).toBe(0);
@@ -429,7 +432,7 @@ describe("game model", () => {
   it("uses the active difficulty threshold without capping stock", () => {
     const hard = fixedGame();
     hard.start({ difficulty: "hard" });
-    hard.awardJuice({ apple: 30, orange: 0, lemon: 0, grape: 0, melon: 0, berry: 0 });
+    hard.awardJuice({ apple: getDifficultyConfig("hard").juiceThreshold * 6, orange: 0, lemon: 0, grape: 0, melon: 0, berry: 0 });
 
     expect(hard.juiceStock.apple).toBe(6);
     expect(hard.juiceProgress.apple).toBe(0);
@@ -443,7 +446,7 @@ describe("game model", () => {
 
     expect(game.juiceProgress.apple).toBe(2);
 
-    game.awardJuice({ apple: 2, orange: 2, lemon: 0, grape: 0, melon: 0, berry: 0 });
+    game.awardJuice({ apple: game.difficulty.juiceThreshold - 2, orange: 2, lemon: 0, grape: 0, melon: 0, berry: 0 });
 
     expect(game.juiceStock.apple).toBe(1);
     expect(game.juiceProgress.apple).toBe(0);
@@ -454,7 +457,7 @@ describe("game model", () => {
   it("queues a pressed bottle in Next, drops it as a piece, and bursts on landing", () => {
     const game = fixedGame();
     game.start();
-    game.awardJuice({ apple: 4, orange: 0, lemon: 0, grape: 0, melon: 0, berry: 0 });
+    game.awardJuice({ apple: game.difficulty.juiceThreshold, orange: 0, lemon: 0, grape: 0, melon: 0, berry: 0 });
 
     expect(game.juiceDropsCreated).toBe(1);
     expect(game.nextPreviews[0]).toEqual({ kind: "juiceDrop", fruit: "apple" });
@@ -667,7 +670,7 @@ describe("game model", () => {
   });
 
   it("scores and reports simultaneous clear groups without merging fruit types", () => {
-    const game = fixedGame();
+    const game = pressEvery(fixedGame(), 4);
     game.state = "playing";
     game.board = boardFromRows([
       "......",
@@ -697,6 +700,12 @@ describe("game model", () => {
   });
 
 });
+
+/** Pins bottle size so juice mechanics are tested apart from the current balance numbers. */
+function pressEvery(game: GameModel, units: number): GameModel {
+  game.difficulty = { ...game.difficulty, juiceThreshold: units };
+  return game;
+}
 
 function fixedGame(sequence: Fruit[] = ["apple", "orange", "lemon", "grape", "melon", "berry"]): GameModel {
   let index = 0;

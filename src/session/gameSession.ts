@@ -1,4 +1,4 @@
-import { GAME_MODE_CONFIGS, PROGRESSION_DROP_INTERVAL_MULTIPLIERS, getChallengeSnapshot, getDifficultyConfig, updateChallenge } from "../core";
+import { GAME_MODE_CONFIGS, PROGRESSION_DROP_INTERVAL_MULTIPLIERS, getChallengeSnapshot, getDifficultyConfig, getWaterPressureDrops, getWaterPressureSize, updateChallenge } from "../core";
 import type { BgmMoment, ChallengeRuntimeState, ChallengeResult, DifficultyId, Fruit, GameModeId, GameSettings, GameState, GridPosition, JuiceEffectResult, NextPiecePreview, ProgressionStage, ResolveReport } from "../core";
 import { createChallengeState } from "../core";
 import { completePlayerStats, getScopedRecord } from "../storage/stats";
@@ -67,6 +67,8 @@ export class GameSession {
   private recordScope: RecordScope = "player";
   private playback: { timeline: ResolvePlayback; elapsedMs: number; stepIndex: number } | null = null;
   private presentationStep = 0;
+  private piecesPlaced = 0;
+  private pendingWater = 0;
   private challenge: ChallengeRuntimeState;
   private settings: GameSettings;
   private stats: PlayerStats;
@@ -83,6 +85,8 @@ export class GameSession {
     this.recordScope = "player";
     this.playback = null;
     this.presentationStep += 1;
+    this.piecesPlaced = 0;
+    this.pendingWater = 0;
     this.resetChallenge("Active");
     this.dropTimer = 0;
     this.elapsedPlayingMs = 0;
@@ -257,6 +261,7 @@ export class GameSession {
       juiceProgress: this.game.juiceProgress,
       juiceDropsCreated: this.game.juiceDropsCreated,
       queuedJuiceDrops: [...this.game.queuedJuiceDrops],
+      waterIncoming: this.getWaterIncoming(),
       soundEnabled: this.options.soundEnabled(),
       stats: this.stats,
       settings: this.settings,
@@ -335,10 +340,44 @@ export class GameSession {
       result.sounds.push({ kind: "pour" });
     }
     this.challenge = updateChallenge(this.challenge, { kind: "chain", chain: report.chain }, GAME_MODE_CONFIGS[this.settings.mode]).state;
+    if (!report.juiceDrop) this.countPlacedPiece();
     this.startPlayback(report, result);
+    if (!this.playback) this.releaseWater(result);
     this.syncBgmContext(result);
     this.syncWaterCleanupProgress(result);
     this.advanceChallenge(0, result);
+  }
+
+  private countPlacedPiece(): void {
+    this.piecesPlaced += 1;
+    this.pendingWater += getWaterPressureDrops(getDifficultyConfig(this.settings.difficulty), GAME_MODE_CONFIGS[this.settings.mode], this.piecesPlaced);
+  }
+
+  /** Lands pending water once the board is settled, so it never interrupts a chain. */
+  private releaseWater(result: GameSessionCommandResult): void {
+    if (this.pendingWater <= 0) return;
+    const count = this.pendingWater;
+    this.pendingWater = 0;
+    if (this.game.state !== "playing") return;
+    let landed = 0;
+    for (let index = 0; index < count; index += 1) {
+      const cell = this.game.dropWater();
+      if (!cell) break;
+      result.effects.push({ kind: "waterDrop", cell });
+      landed += 1;
+    }
+    if (landed === 0) return;
+    result.sounds.push({ kind: "whoosh", strength: 0.4 });
+    result.shouldRender = true;
+    result.shouldUpdateHud = true;
+  }
+
+  private getWaterIncoming(): HudSnapshot["waterIncoming"] {
+    const difficulty = getDifficultyConfig(this.settings.difficulty);
+    if (!GAME_MODE_CONFIGS[this.settings.mode].waterPressure) return null;
+    const { everyPieces } = difficulty.waterPressure;
+    const inPieces = everyPieces - (this.piecesPlaced % everyPieces);
+    return { inPieces, drops: getWaterPressureSize(difficulty, this.piecesPlaced + inPieces) };
   }
 
   private acceptsPieceInput(): boolean {
@@ -394,6 +433,7 @@ export class GameSession {
       this.dropTimer = 0;
       result.shouldRender = true;
       result.shouldUpdateHud = true;
+      this.releaseWater(result);
     }
     return result;
   }

@@ -18,7 +18,7 @@ if (args.json === "true") {
   for (const round of report.rounds) {
     const chainPath = round.chainEvents.map((event) => `${event.bestChain}@${(event.simulatedMs / 1000).toFixed(1)}s`).join(",") || "none";
     console.log(
-      `#${round.round} seed=${round.seed} result=${round.result} sim=${(round.simulatedMs / 1000).toFixed(1)}s wall=${round.wallMs.toFixed(1)}ms pieces=${round.pieces} decisions=${round.decisions} best=${round.bestChain} chains=${chainPath} maxDecision=${round.maxDecisionMs.toFixed(1)}ms potential=${round.maxChainPotentialEvaluations}`,
+      `#${round.round} seed=${round.seed} result=${round.result} sim=${(round.simulatedMs / 1000).toFixed(1)}s wall=${round.wallMs.toFixed(1)}ms pieces=${round.pieces} decisions=${round.decisions} best=${round.bestChain} score=${round.score} bottles=${round.juiceDrops} water=${round.waterDropped} height=${round.meanMaxHeight.toFixed(1)} chains=${chainPath} maxDecision=${round.maxDecisionMs.toFixed(1)}ms potential=${round.maxChainPotentialEvaluations}`,
     );
   }
   console.log(
@@ -26,7 +26,9 @@ if (args.json === "true") {
   );
 }
 
-if (report.rounds.some((round) => round.slowDecisionCount > 0) || (report.options.mode !== "normal" && report.summary.topOuts > 0)) process.exitCode = 1;
+// Modes with water pressure can end in a top-out by design; the pure challenges must not.
+const topOutIsFailure = report.options.mode === "chainChallenge" || report.options.mode === "waterCleanup";
+if (report.rounds.some((round) => round.slowDecisionCount > 0) || (topOutIsFailure && report.summary.topOuts > 0)) process.exitCode = 1;
 
 type CliArgs = Record<string, string>;
 

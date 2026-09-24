@@ -72,9 +72,9 @@ test("persists settings and shows the active difficulty press threshold", async 
   await expect(page.getByLabel("Auto Play Pace")).toHaveValue("slow");
   await expect(page.getByLabel("SFX Volume")).toHaveValue("35");
   await expect(page.getByLabel("BGM Volume")).toHaveValue("60");
-  await expect(page.locator('.press-lane[data-fruit="apple"]')).toHaveAttribute("aria-valuemax", "5");
-  await expect(page.locator('.press-lane[data-fruit="berry"]')).toHaveAttribute("aria-valuemax", "5");
-  await expect(page.locator('.press-lane[data-fruit="apple"] .press-progress')).toHaveText("0/5");
+  await expect(page.locator('.press-lane[data-fruit="apple"]')).toHaveAttribute("aria-valuemax", "30");
+  await expect(page.locator('.press-lane[data-fruit="berry"]')).toHaveAttribute("aria-valuemax", "30");
+  await expect(page.locator('.press-lane[data-fruit="apple"] .press-progress')).toHaveText("0/30");
 });
 
 test("keeps the core screen focused on Press Tank with a dedicated Auto Play control", async ({ page }) => {
@@ -239,7 +239,7 @@ test("keeps bottled stock distinct from the next bottle's fill and resets on res
   await expect(apple).toHaveClass(/has-bottle/);
   await expect(apple).toHaveAttribute("aria-valuenow", "0");
   await expect(apple.locator(".press-juice-icon")).toHaveCSS("opacity", "1");
-  await expect(apple.locator(".press-progress")).toHaveText("0/4");
+  await expect(apple.locator(".press-progress")).toHaveText("0/24");
   await page.getByRole("button", { name: "Restart" }).click();
   await expect(apple).not.toHaveClass(/has-bottle/);
   await expect(page.locator(".juice-flight")).toHaveCount(0);

@@ -5,6 +5,7 @@ export * from "./constants";
 export * from "./difficulty";
 export * from "./game";
 export * from "./modes";
+export * from "./pressure";
 export * from "./rules";
 export * from "./types";
 export * from "./utils";

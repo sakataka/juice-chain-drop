@@ -6,6 +6,7 @@ import {
   cloneBoard,
   cloneFruitRecord,
   getJuiceEffectCenter,
+  getDifficultyConfig,
   getPieceCells,
   isValidPiece,
   makeJuiceDrop,
@@ -47,15 +48,7 @@ export type ResolveSummary = {
 };
 
 const ROTATION_COUNT = 4;
-const FALLBACK_DIFFICULTY: DifficultyConfig = {
-  id: "normal",
-  label: "Normal",
-  dropInterval: 0,
-  slowDropInterval: 0,
-  scoreMultiplier: 1,
-  juiceThreshold: 4,
-  progressionStageDurationMs: 60_000,
-};
+const FALLBACK_DIFFICULTY: DifficultyConfig = getDifficultyConfig("normal");
 
 export { cloneBoard, cloneFruitRecord };
 

@@ -84,9 +84,11 @@ export function applyJuiceAwards(input: {
   const juiceProgress = cloneFruitRecord(input.juiceProgress);
   const juiceStock = cloneFruitRecord(input.juiceStock);
 
-  for (const removed of input.awards) {
+  for (let step = 0; step < input.awards.length; step += 1) {
+    const removed = input.awards[step];
+    const chainWeight = step + 1;
     for (const fruit of FRUITS) {
-      juiceProgress[fruit] += removed[fruit];
+      juiceProgress[fruit] += removed[fruit] * chainWeight;
       while (juiceProgress[fruit] >= input.difficulty.juiceThreshold) {
         juiceProgress[fruit] -= input.difficulty.juiceThreshold;
         juiceStock[fruit] += 1;

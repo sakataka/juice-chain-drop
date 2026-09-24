@@ -43,6 +43,8 @@ export type AiModeObjective = {
   id: GameModeId;
   defaultPhase: Exclude<AiPhase, "survive">;
   beamWidth: number;
+  /** Whether phase selection needs the (costly) best chain each quiet placement could set up. */
+  usesBuildPotential: boolean;
   resolvePhase(context: AiObjectiveContext, policy: AiPolicy): AiPhase;
 };
 
@@ -138,20 +140,29 @@ function isDangerous(context: AiObjectiveContext, policy: AiPolicy): boolean {
 export const AI_MODE_OBJECTIVES: Record<GameModeId, AiModeObjective> = {
   normal: {
     id: "normal",
-    defaultPhase: "balanced",
-    beamWidth: 6,
-    resolvePhase: (context, policy) => (isDangerous(context, policy) ? "survive" : "balanced"),
+    defaultPhase: "chainBuild",
+    beamWidth: 4,
+    usesBuildPotential: true,
+    // Endless play is watched as much as played: stack a chain while the vat is safe, fire it as water rises.
+    resolvePhase: (context) => {
+      if (context.topRisk >= 2 || context.maxHeight >= 9) return "survive";
+      if (context.maxHeight >= 7 && context.bestImmediateChain >= 2) return "chainTrigger";
+      if (context.bestImmediateChain >= 5 && context.bestImmediateChain >= context.bestBuildPotential) return "chainTrigger";
+      return "chainBuild";
+    },
   },
   scoreAttack: {
     id: "scoreAttack",
     defaultPhase: "scoreRush",
     beamWidth: 6,
+    usesBuildPotential: false,
     resolvePhase: (context, policy) => (isDangerous(context, policy) ? "survive" : "scoreRush"),
   },
   chainChallenge: {
     id: "chainChallenge",
     defaultPhase: "chainBuild",
     beamWidth: 4,
+    usesBuildPotential: true,
     resolvePhase: (context, policy) => {
       if (context.topRisk >= 2 || context.maxHeight >= 9) return "survive";
       if ((context.snapshot.challenge.remainingMs ?? 60_000) <= 15_000) return "chainTrigger";
@@ -165,6 +176,7 @@ export const AI_MODE_OBJECTIVES: Record<GameModeId, AiModeObjective> = {
     id: "waterCleanup",
     defaultPhase: "waterClear",
     beamWidth: 6,
+    usesBuildPotential: false,
     resolvePhase: (context, policy) => (isDangerous(context, policy) ? "survive" : "waterClear"),
   },
 };
