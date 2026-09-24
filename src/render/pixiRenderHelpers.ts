@@ -13,7 +13,7 @@ export const EFFECT_BRASS = 0xd9a44a;
 export const LAB_DARK = 0x241307;
 export const LAB_PANEL = 0x33200e;
 export const LAB_GRID_A = 0x1c2924;
-export const LAB_GRID_B = 0x23332b;
+export const LAB_GRID_B = 0x1f2e27;
 export const TRAY_WOOD = 0xf2a23b;
 
 export function replaceLayer(layer: Container, draw: () => void): void {

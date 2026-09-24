@@ -294,6 +294,45 @@ h2 {
   margin-bottom: 0;
 }
 
+.preview-heading {
+  display: grid;
+  gap: 5px;
+  justify-items: start;
+}
+
+.water-incoming {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin: 0;
+  padding: 2px 8px 2px 6px;
+  border: 1px solid rgba(125, 220, 255, 0.45);
+  border-radius: 999px;
+  color: #d8f6ff;
+  background: rgba(16, 58, 74, 0.72);
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+.water-incoming::before {
+  width: 8px;
+  height: 10px;
+  border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+  background: #7ddcff;
+  content: "";
+}
+
+.water-incoming.is-imminent {
+  border-color: rgba(125, 220, 255, 0.9);
+  box-shadow: 0 0 10px rgba(125, 220, 255, 0.45);
+}
+
+.water-incoming[hidden] {
+  display: none;
+}
+
 .preview-panel canvas {
   display: block;
   width: 100%;

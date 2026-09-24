@@ -1,4 +1,4 @@
-import { GAME_MODE_CONFIGS, PROGRESSION_DROP_INTERVAL_MULTIPLIERS, getChallengeSnapshot, getDifficultyConfig, getWaterPressureDrops, getWaterPressureSize, updateChallenge } from "../core";
+import { FRUITS, GAME_MODE_CONFIGS, PROGRESSION_DROP_INTERVAL_MULTIPLIERS, getChallengeSnapshot, getDifficultyConfig, getWaterPressureDrops, getWaterPressureSize, updateChallenge } from "../core";
 import type { BgmMoment, ChallengeRuntimeState, ChallengeResult, DifficultyId, Fruit, GameModeId, GameSettings, GameState, GridPosition, JuiceEffectResult, NextPiecePreview, ProgressionStage, ResolveReport } from "../core";
 import { createChallengeState } from "../core";
 import { completePlayerStats, getScopedRecord } from "../storage/stats";
@@ -279,6 +279,7 @@ export class GameSession {
         state: this.getPresentedState(),
         falls: step.falls,
         presentationStep: this.presentationStep,
+        vat: this.getVatLevel(),
       };
     }
     return {
@@ -288,6 +289,7 @@ export class GameSession {
       state: this.game.state,
       falls: [],
       presentationStep: this.presentationStep,
+      vat: this.getVatLevel(),
     };
   }
 
@@ -346,6 +348,16 @@ export class GameSession {
     this.syncBgmContext(result);
     this.syncWaterCleanupProgress(result);
     this.advanceChallenge(0, result);
+  }
+
+  private getVatLevel(): RenderSnapshot["vat"] {
+    const threshold = this.game.difficulty.juiceThreshold;
+    let best: RenderSnapshot["vat"] = null;
+    for (const fruit of FRUITS) {
+      const level = Math.min(1, this.game.juiceProgress[fruit] / threshold);
+      if (level > 0 && (!best || level > best.level)) best = { fruit, level };
+    }
+    return best;
   }
 
   private countPlacedPiece(): void {

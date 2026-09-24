@@ -94,6 +94,7 @@ export class HudController {
   private readonly challengeResultValue = getElement<HTMLElement>("#challengeResultValue");
   private readonly aiSpeedSelect = getElement<HTMLSelectElement>("#aiSpeedSelect");
   private readonly pressTank = getElement<HTMLElement>("#pressTank");
+  private readonly waterIncoming = getElement<HTMLElement>("#waterIncoming");
   private readonly pressLanes = new Map<Fruit, PressLaneElements>();
 
   constructor(callbacks: HudCallbacks) {
@@ -146,6 +147,7 @@ export class HudController {
     setCardLabel(this.bestScoreValue, `${recordPrefix} Score`);
     setCardLabel(this.bestChainValue, `${recordPrefix} Chain`);
     this.juiceDropsValue.textContent = String(snapshot.juiceDropsCreated);
+    this.updateWaterIncoming(snapshot);
     this.difficultySelect.value = snapshot.settings.difficulty;
     this.difficultySelect.title = getDifficultyTitle(snapshot.settings.difficulty);
     this.modeSelect.value = snapshot.settings.mode;
@@ -167,11 +169,13 @@ export class HudController {
     this.gameOverOverlay.setAttribute("aria-hidden", String(snapshot.state !== "gameover"));
     this.pauseOverlay.hidden = snapshot.state !== "paused";
     this.pauseOverlay.setAttribute("aria-hidden", String(snapshot.state !== "paused"));
-    setButtonContent(this.startButton, snapshot.state === "playing" ? "↻" : "▶", snapshot.state === "playing" ? "Restart" : snapshot.state === "gameover" ? "Retry" : "Start");
+    // A chain replay is still an active run: keep Restart and Pause available while it plays.
+    const running = snapshot.state === "playing" || snapshot.state === "resolving";
+    setButtonContent(this.startButton, running ? "↻" : "▶", running ? "Restart" : snapshot.state === "gameover" ? "Retry" : "Start");
     setButtonContent(this.pauseButton, snapshot.state === "paused" ? "▶" : "Ⅱ", snapshot.state === "paused" ? "Resume" : "Pause");
     this.touchPauseButton.textContent = snapshot.state === "paused" ? "Resume" : "Pause";
-    this.pauseButton.disabled = snapshot.state !== "playing" && snapshot.state !== "paused";
-    this.touchPauseButton.disabled = snapshot.state !== "playing" && snapshot.state !== "paused";
+    this.pauseButton.disabled = !running && snapshot.state !== "paused";
+    this.touchPauseButton.disabled = !running && snapshot.state !== "paused";
     setButtonContent(this.soundButton, "♪", snapshot.soundEnabled ? "Sound on" : "Sound off");
     this.soundButton.title = snapshot.soundEnabled ? "Sound on" : "Sound off";
     this.soundButton.setAttribute("aria-pressed", String(snapshot.soundEnabled));
@@ -205,6 +209,17 @@ export class HudController {
       elements.queued.textContent = queued > 0 ? `NEXT ×${queued}` : JUICE_EFFECT_LABEL[fruit].replace(`${FRUIT_LABEL[fruit]}: `, "");
       elements.queued.classList.toggle("is-ready", queued > 0);
     }
+  }
+
+  private updateWaterIncoming(snapshot: HudSnapshot): void {
+    const incoming = snapshot.waterIncoming;
+    const visible = incoming !== null && snapshot.state !== "ready" && snapshot.state !== "gameover";
+    this.waterIncoming.hidden = !visible;
+    if (!visible || !incoming) return;
+    const text = incoming.inPieces === 1 ? `Water ×${incoming.drops} next` : `Water ×${incoming.drops} in ${incoming.inPieces}`;
+    if (this.waterIncoming.textContent !== text) this.waterIncoming.textContent = text;
+    this.waterIncoming.title = `${incoming.drops} water drop${incoming.drops === 1 ? "" : "s"} land after ${incoming.inPieces} more fruit pair${incoming.inPieces === 1 ? "" : "s"}`;
+    this.waterIncoming.classList.toggle("is-imminent", incoming.inPieces === 1);
   }
 
   collectJuice(cells: GridPosition[], fruit: Fruit): void {

@@ -10,6 +10,8 @@ export type RenderSnapshot = {
   falls: FallMove[];
   /** Changes whenever the shown board step changes, so motion starts once per step. */
   presentationStep: number;
+  /** Juice pooling in the vat: the fruit closest to its next bottle and how close (0-1). */
+  vat: { fruit: Fruit; level: number } | null;
 };
 
 export type Particle = {

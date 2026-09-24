@@ -110,7 +110,10 @@ test("keeps fast Chain Challenge Auto Play responsive during sustained search", 
   await page.waitForTimeout(4_000);
 
   const after = await page.evaluate(() => window.__juiceDebug?.() as any);
-  expect(after.debug.frames - before.debug.frames).toBeGreaterThan(60);
+  // Headless Pixel 5 emulation software-renders at ~15 fps alone and ~7 fps beside parallel workers
+  // (same before and after the renderer rework), so frames only guard against a stalled loop;
+  // maxDecisionMs below is the real budget for AI search.
+  expect(after.debug.frames - before.debug.frames).toBeGreaterThan(10);
   expect(after.ai.decisionCount).toBeGreaterThan(before.ai.decisionCount);
   expect(after.ai.maxDecisionMs).toBeLessThan(250);
   expect(after.ai.chainPotentialEvaluations).toBeLessThanOrEqual(96);

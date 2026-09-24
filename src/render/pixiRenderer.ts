@@ -102,6 +102,7 @@ export class PixiGameRenderer {
   render(snapshot: RenderSnapshot): void {
     if (!this.ready) return;
     this.boardRenderer.drawBoard(snapshot.board, !this.reducedMotion, snapshot.falls, snapshot.presentationStep);
+    this.boardRenderer.setVat(snapshot.vat, !this.reducedMotion);
     this.boardRenderer.drawGhost(snapshot.board, snapshot.active, snapshot.state);
     this.boardRenderer.drawActivePiece(snapshot.active);
     this.boardRenderer.drawNextQueue(snapshot.nextPreviews);
@@ -113,6 +114,7 @@ export class PixiGameRenderer {
 
   spawnClearPop(cells: GridPosition[], fruit: Fruit, chain: number): void {
     this.visualEffectsRenderer.spawnClearPop(cells, fruit, chain);
+    this.boardRenderer.slosh(chain);
   }
 
   spawnStageAdvance(stage: ProgressionStage): void {

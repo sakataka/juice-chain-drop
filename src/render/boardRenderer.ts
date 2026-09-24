@@ -1,6 +1,6 @@
 import { Container, Graphics, Sprite, TilingSprite } from "pixi.js";
-import { BOARD_X, BOARD_Y, CELL, COLS, HEIGHT, getPieceCells, isFruitCell, isValidPiece, isWaterCell, movedPiece, ROWS, WIDTH } from "../core";
-import type { Board, Cell, FallMove, GameState, NextPiecePreview, PairPiece } from "../core";
+import { BOARD_X, BOARD_Y, CELL, COLS, FRUIT_COLORS, HEIGHT, getPieceCells, isFruitCell, isValidPiece, isWaterCell, movedPiece, ROWS, WIDTH } from "../core";
+import type { Board, Cell, FallMove, Fruit, GameState, NextPiecePreview, PairPiece } from "../core";
 import {
   addFruitSprite,
   addJuiceSprite,
@@ -11,6 +11,7 @@ import {
   EFFECT_MINT,
   EFFECT_ORANGE,
   FRUIT_DRAW_SCALE,
+  hexToNumber,
   LAB_DARK,
   LAB_GRID_A,
   LAB_GRID_B,
@@ -53,14 +54,33 @@ const FRUIT_INSET = 4;
 const FRUIT_SIZE = CELL - FRUIT_INSET * 2;
 const FRUIT_VISUAL = FRUIT_SIZE * FRUIT_DRAW_SCALE;
 const FRUIT_OFFSET = FRUIT_INSET + (FRUIT_SIZE - FRUIT_VISUAL) / 2;
+/** Juice pools up to this share of the vat height as the next bottle fills. */
+const VAT_MAX_FILL = 0.42;
+/** Columns this tall make the vat rim pulse as an overflow warning. */
+const DANGER_HEIGHT = 9;
+
+/** The pressed juice pooling at the bottom of the vat and the overflow warning on its rim. */
+type VatState = {
+  fruit: Fruit | null;
+  color: number;
+  level: number;
+  targetLevel: number;
+  slosh: number;
+  danger: number;
+};
 
 export class BoardRenderer {
   private readonly slots: CellSlot[][] = [];
   private readonly cellLayer = new Container();
+  private readonly vatGraphics = new Graphics();
+  private readonly rimGraphics = new Graphics();
+  private readonly vat: VatState = { fruit: null, color: 0xffffff, level: 0, targetLevel: 0, slosh: 0, danger: 0 };
   private previousBoard: Board | null = null;
   private lastPresentationStep = -1;
   private lastNextKey = "";
   private animating = false;
+  private vatDirty = true;
+  private vatMotion = true;
 
   constructor(private readonly options: BoardRendererOptions) {}
 
@@ -68,7 +88,7 @@ export class BoardRenderer {
   init(): void {
     this.drawBackground();
     const { board } = this.options.layers;
-    board.addChild(createBoardPanel(), this.cellLayer);
+    board.addChild(createBoardPanel(), this.vatGraphics, this.cellLayer, this.rimGraphics);
     for (let y = 0; y < ROWS; y += 1) {
       const row: CellSlot[] = [];
       for (let x = 0; x < COLS; x += 1) {
@@ -90,7 +110,28 @@ export class BoardRenderer {
     this.animating = false;
   }
 
+  /** Chains make the pooled juice slosh; bigger chains slosh harder. */
+  slosh(chain: number): void {
+    this.vat.slosh = Math.min(14, this.vat.slosh + 3 + chain * 2);
+  }
+
+  setVat(vat: { fruit: Fruit; level: number } | null, motion: boolean): void {
+    this.vat.targetLevel = vat?.level ?? 0;
+    if (vat && vat.fruit !== this.vat.fruit) {
+      this.vat.fruit = vat.fruit;
+      this.vat.color = hexToNumber(FRUIT_COLORS[vat.fruit]);
+    }
+    this.vatMotion = motion;
+    if (!motion) {
+      this.vat.level = this.vat.targetLevel;
+      this.vat.slosh = 0;
+    }
+    this.vatDirty = true;
+    this.drawVat(performance.now());
+  }
+
   animate(now: number): void {
+    this.drawVat(now);
     if (!this.animating) return;
     let active = false;
     for (const row of this.slots) {
@@ -153,6 +194,7 @@ export class BoardRenderer {
       }
     }
     this.previousBoard = board;
+    this.vat.danger = Math.max(0, getMaxHeight(board) - (DANGER_HEIGHT - 1)) / (ROWS - DANGER_HEIGHT + 1);
     this.animate(now);
   }
 
@@ -278,6 +320,44 @@ export class BoardRenderer {
     });
   }
 
+  private drawVat(now: number): void {
+    const vat = this.vat;
+    const motion = this.vatMotion;
+    // With motion on, the pooled juice ripples every frame; otherwise redraw only on change.
+    const live = motion && (vat.level > 0.002 || vat.targetLevel > 0 || vat.slosh > 0.05);
+    if (!live && vat.danger === 0 && !this.vatDirty) return;
+    this.vatDirty = false;
+    if (motion) {
+      vat.level += (vat.targetLevel - vat.level) * 0.08;
+      vat.slosh *= 0.96;
+    }
+
+    const graphics = this.vatGraphics;
+    graphics.clear();
+    const height = vat.level * VAT_MAX_FILL * ROWS * CELL;
+    if (height > 0.5 && vat.fruit) {
+      const floor = BOARD_Y + ROWS * CELL;
+      const surface = floor - height;
+      const wave = (x: number) => (motion ? Math.sin(x * 0.045 + now * 0.0032) * (1.6 + vat.slosh) + Math.sin(x * 0.11 - now * 0.005) * vat.slosh * 0.4 : 0);
+      graphics.moveTo(BOARD_X, floor);
+      for (let x = 0; x <= COLS * CELL; x += 12) graphics.lineTo(BOARD_X + x, surface + wave(x));
+      graphics.lineTo(BOARD_X + COLS * CELL, floor).closePath().fill({ color: vat.color, alpha: 0.28 });
+      graphics.moveTo(BOARD_X, surface + wave(0));
+      for (let x = 12; x <= COLS * CELL; x += 12) graphics.lineTo(BOARD_X + x, surface + wave(x));
+      graphics.stroke({ color: EFFECT_CREAM, alpha: 0.45, width: 2 });
+    }
+
+    const rim = this.rimGraphics;
+    rim.clear();
+    if (vat.danger > 0) {
+      const pulse = motion ? 0.5 + Math.sin(now * 0.008) * 0.5 : 1;
+      rim
+        .roundRect(BOARD_X - 3, BOARD_Y - 3, COLS * CELL + 6, ROWS * CELL + 6, 10)
+        .stroke({ color: EFFECT_CORAL, alpha: (0.35 + vat.danger * 0.4) * (0.4 + pulse * 0.6), width: 3 + vat.danger * 3 });
+      rim.rect(BOARD_X, BOARD_Y, COLS * CELL, CELL * 2).fill({ color: EFFECT_CORAL, alpha: 0.05 + vat.danger * 0.08 * pulse });
+    }
+  }
+
   private createSlot(x: number, y: number): CellSlot {
     const root = new Container();
     root.x = BOARD_X + x * CELL;
@@ -358,4 +438,11 @@ function createBoardPanel(): Graphics {
       .stroke({ color: EFFECT_BRASS, width: 1, alpha: 0.14 });
   }
   return panel;
+}
+
+function getMaxHeight(board: Board): number {
+  for (let y = 0; y < ROWS; y += 1) {
+    if (board[y].some((cell) => cell !== null)) return ROWS - y;
+  }
+  return 0;
 }
