@@ -10,8 +10,6 @@ export type SfxKey =
   | "sparkle"
   | "sparkleChain"
   | "pour"
-  | "shipmentLow"
-  | "shipmentHigh"
   | "fanfareLow"
   | "fanfareMid"
   | "fanfareHigh"
@@ -160,29 +158,6 @@ export const SFX_DEFINITIONS: Record<SfxKey, SfxrDefinition> = {
     p_lpf_freq: 0.52,
     p_lpf_ramp: -0.05,
     p_hpf_freq: 0.06,
-    sound_vol: 0.2,
-  }),
-  shipmentLow: sfx({
-    wave_type: 0,
-    p_env_sustain: 0.07,
-    p_env_punch: 0.24,
-    p_env_decay: 0.12,
-    p_base_freq: 0.24,
-    p_freq_ramp: -0.04,
-    p_duty: 0.5,
-    p_lpf_freq: 0.78,
-    sound_vol: 0.2,
-  }),
-  shipmentHigh: sfx({
-    wave_type: 1,
-    p_env_sustain: 0.055,
-    p_env_punch: 0.34,
-    p_env_decay: 0.16,
-    p_base_freq: 0.58,
-    p_freq_ramp: 0.12,
-    p_arp_mod: 0.26,
-    p_arp_speed: 0.56,
-    p_repeat_speed: 0.32,
     sound_vol: 0.2,
   }),
   fanfareLow: sfx({

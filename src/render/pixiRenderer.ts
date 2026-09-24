@@ -7,7 +7,7 @@ import fruitStripUrl from "../assets/sprites/lab/fruits-v2.png";
 import juiceStripUrl from "../assets/sprites/lab/juices-v2.png";
 import waterSpriteUrl from "../assets/sprites/lab/water-v2.png";
 import { FRUITS, HEIGHT, SPRITE_CELL, WIDTH } from "../core";
-import type { Fruit, GridPosition, JuiceEffectResult, ProgressionStage, ShipmentReport } from "../core";
+import type { Fruit, GridPosition, JuiceEffectResult, ProgressionStage } from "../core";
 import { BoardRenderer } from "./boardRenderer";
 import type { PixiRenderTextures, RenderSnapshot } from "./renderTypes";
 import { VisualEffectsRenderer } from "./visualEffectsRenderer";
@@ -113,10 +113,6 @@ export class PixiGameRenderer {
 
   spawnClearPop(cells: GridPosition[], fruit: Fruit, chain: number): void {
     this.visualEffectsRenderer.spawnClearPop(cells, fruit, chain);
-  }
-
-  spawnShipment(report: ShipmentReport): void {
-    this.visualEffectsRenderer.spawnShipment(report);
   }
 
   spawnStageAdvance(stage: ProgressionStage): void {

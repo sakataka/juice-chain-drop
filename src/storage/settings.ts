@@ -1,4 +1,4 @@
-import { DEFAULT_DIFFICULTY, DEFAULT_GAME_MODE, DEFAULT_SHIPMENT_INTERVAL_SECONDS, isDifficultyId, isGameModeId } from "../core";
+import { DEFAULT_DIFFICULTY, DEFAULT_GAME_MODE, isDifficultyId, isGameModeId } from "../core";
 import type { AiSpeed, GameSettings } from "../core";
 import type { StatsStorage } from "./stats";
 
@@ -8,8 +8,6 @@ export const DEFAULT_GAME_SETTINGS: GameSettings = {
   difficulty: DEFAULT_DIFFICULTY,
   mode: DEFAULT_GAME_MODE,
   aiSpeed: "normal",
-  shippingIntervalSeconds: DEFAULT_SHIPMENT_INTERVAL_SECONDS,
-  waterEnabled: true,
   reducedMotion: false,
   sfxVolume: 0.5,
   bgmVolume: 0.45,
@@ -38,17 +36,10 @@ function normalizeSettings(value: Partial<GameSettings>): GameSettings {
     difficulty: isDifficultyId(value.difficulty) ? value.difficulty : DEFAULT_DIFFICULTY,
     mode: isGameModeId(value.mode) ? value.mode : DEFAULT_GAME_MODE,
     aiSpeed: isAiSpeed(value.aiSpeed) ? value.aiSpeed : DEFAULT_GAME_SETTINGS.aiSpeed,
-    shippingIntervalSeconds: normalizeShippingInterval(value.shippingIntervalSeconds),
-    waterEnabled: value.waterEnabled === false ? false : DEFAULT_GAME_SETTINGS.waterEnabled,
     reducedMotion: value.reducedMotion === true,
     sfxVolume: normalizeVolume(value.sfxVolume, DEFAULT_GAME_SETTINGS.sfxVolume),
     bgmVolume: normalizeVolume(value.bgmVolume, DEFAULT_GAME_SETTINGS.bgmVolume),
   };
-}
-
-function normalizeShippingInterval(value: unknown): number {
-  if (typeof value === "number" && Number.isFinite(value)) return Math.max(0, Math.min(600, Math.round(value)));
-  return DEFAULT_SHIPMENT_INTERVAL_SECONDS;
 }
 
 function isAiSpeed(value: unknown): value is AiSpeed {

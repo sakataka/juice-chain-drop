@@ -13,7 +13,7 @@ import {
   movedPiece,
   resolveBoardRules,
 } from "../core";
-import type { Board, DifficultyConfig, Fruit, FruitRecord, NextPiecePreview, PairPiece } from "../core";
+import type { Board, DifficultyConfig, FruitRecord, NextPiecePreview, PairPiece } from "../core";
 import type { AiCommand } from "./types";
 
 export type PlacementCandidate = {
@@ -32,7 +32,6 @@ export type SimState = {
   nextPreviews: NextPiecePreview[];
   juiceStock: FruitRecord;
   juiceProgress: FruitRecord;
-  featuredFruit: Fruit;
   score: number;
   bestChain: number;
   waterClears: number;
@@ -55,8 +54,6 @@ const FALLBACK_DIFFICULTY: DifficultyConfig = {
   slowDropInterval: 0,
   scoreMultiplier: 1,
   juiceThreshold: 4,
-  waterIntervalMs: { min: 0, max: 0 },
-  waterBurst: { min: 1, max: 1 },
   progressionStageDurationMs: 60_000,
 };
 
@@ -95,7 +92,6 @@ export function simulatePlacement(state: SimState, candidate: PlacementCandidate
     juiceProgress: nextProgress,
     juiceStock: nextStock,
     awards: candidate.juiceAwards,
-    featuredFruit: state.featuredFruit,
     difficulty,
   });
   return {
@@ -103,7 +99,6 @@ export function simulatePlacement(state: SimState, candidate: PlacementCandidate
     nextPreviews: state.nextPreviews.slice(1).map(clonePreview),
     juiceProgress: juice.juiceProgress,
     juiceStock: juice.juiceStock,
-    featuredFruit: state.featuredFruit,
     score: state.score + candidate.score,
     bestChain: Math.max(state.bestChain, candidate.chain),
     waterClears: state.waterClears + countWater(state.board) - countWater(candidate.board),
@@ -114,15 +109,6 @@ export function nextActiveFromPreviews(nextPreviews: NextPiecePreview[]): PairPi
   const preview = nextPreviews[0];
   if (!preview) return null;
   return preview.kind === "juiceDrop" ? makeJuiceDrop(preview.fruit) : makePiece(preview.pair);
-}
-
-export function simulateJuice(state: SimState, active: PairPiece | null, fruit: Fruit, difficulty: DifficultyConfig): ResolveSummary {
-  const juice = applyJuiceEffectRules(state.board, { primary: fruit, center: getJuiceEffectCenter(active), activeAxisFruit: active?.axis.fruit });
-  const summary = resolveBoardRules(juice.board, { difficulty });
-  return {
-    ...summary,
-    clearScore: summary.clearScore + calculateJuiceEffectBonus(fruit, juice.effect.cells.length, difficulty),
-  };
 }
 
 export function clonePreview(preview: NextPiecePreview): NextPiecePreview {

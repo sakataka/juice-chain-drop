@@ -102,7 +102,6 @@ function createSimState(snapshot: AiGameSnapshot): SimState {
     nextPreviews: snapshot.nextPreviews.map(clonePreview),
     juiceStock: cloneFruitRecord(snapshot.juiceStock),
     juiceProgress: cloneFruitRecord(snapshot.juiceProgress),
-    featuredFruit: snapshot.featuredFruit,
     score: snapshot.score,
     bestChain: snapshot.challenge.runBestChain,
     waterClears: snapshot.challenge.runWaterClears,

@@ -11,8 +11,6 @@ const settings: GameSettings = {
   difficulty: "normal",
   mode: "normal",
   aiSpeed: "normal",
-  shippingIntervalSeconds: 45,
-  waterEnabled: true,
   reducedMotion: false,
   sfxVolume: 0.8,
   bgmVolume: 0.45,
@@ -96,7 +94,7 @@ describe("GameCommandBus", () => {
     expect(updateHud).not.toHaveBeenCalled();
   });
 
-  it("builds AI snapshots with visible next previews, shipment, and typed mode context", () => {
+  it("builds AI snapshots with visible next previews and typed mode context", () => {
     const { bus, session, game } = createBus();
     bus.dispatch({ kind: "setMode", mode: "scoreAttack" });
     bus.dispatch({ kind: "start" });
@@ -108,7 +106,6 @@ describe("GameCommandBus", () => {
     expect(snapshot.nextPreviews).toEqual(session.getRenderSnapshot().nextPreviews);
     expect(snapshot.nextPreviews).not.toBe(session.getRenderSnapshot().nextPreviews);
     expect(snapshot.nextPreviews[0]).not.toBe(session.getRenderSnapshot().nextPreviews[0]);
-    expect(snapshot.shipment).toMatchObject({ enabled: true, intervalSeconds: 45 });
     expect(snapshot.settings).toMatchObject({ mode: "scoreAttack", difficulty: "normal" });
     expect(snapshot.challenge).toMatchObject({ mode: "scoreAttack", targetScore: 50_000, result: "Active" });
     expect(snapshot.juiceStock.apple).toBe(2);

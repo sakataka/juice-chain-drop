@@ -20,15 +20,6 @@ export const FRUIT_COLORS: Record<Fruit, string> = {
   berry: "#d9468f",
 };
 
-export const NORMAL_KEYS: Record<Fruit, string> = {
-  apple: "1",
-  orange: "2",
-  lemon: "3",
-  grape: "4",
-  melon: "5",
-  berry: "6",
-};
-
 export const JUICE_EFFECT_LABEL: Record<Fruit, string> = {
   apple: "Apple: Burst Clear",
   orange: "Orange: Line Press",
@@ -37,9 +28,6 @@ export const JUICE_EFFECT_LABEL: Record<Fruit, string> = {
   melon: "Melon: Chill Score",
   berry: "Berry: Chain Seed",
 };
-export const DEFAULT_SHIPMENT_INTERVAL_SECONDS = 45;
-export const WATER_GRACE_MS = 10_000;
-export const FEATURED_FRUIT_INTERVAL_MS = 30_000;
 export const PROGRESSION_DROP_INTERVAL_MULTIPLIERS = [1, 0.9, 0.8, 0.7] as const;
 export const NEXT_QUEUE_SIZE = 3;
 export const SPRITE_CELL = 128;

@@ -1,4 +1,4 @@
-import type { Board, ChallengeResult, DifficultyId, Fruit, FruitRecord, GameModeId, GameState, NextPiecePreview, PairPiece } from "../core";
+import type { Board, ChallengeResult, DifficultyId, FruitRecord, GameModeId, GameState, NextPiecePreview, PairPiece } from "../core";
 
 export type AiPhase = "balanced" | "scoreRush" | "chainBuild" | "chainTrigger" | "waterClear" | "survive";
 
@@ -6,7 +6,6 @@ export type AiCommand =
   | { kind: "move"; dx: -1 | 1 }
   | { kind: "rotate" }
   | { kind: "hardDrop" }
-  | { kind: "useJuice"; fruit: Fruit }
   | { kind: "wait" };
 
 export type AiPlan = {
@@ -29,19 +28,11 @@ export type AiGameSnapshot = {
   state: GameState;
   score: number;
   lastChain: number;
-  featuredFruit: Fruit;
   juiceStock: FruitRecord;
   juiceProgress: FruitRecord;
-  shipment: {
-    enabled: boolean;
-    intervalSeconds: number;
-    remainingMs: number;
-    previewScore: number;
-  };
   settings: {
     mode: GameModeId;
     difficulty: DifficultyId;
-    shippingIntervalSeconds: number;
   };
   challenge: {
     mode: GameModeId;

@@ -1,6 +1,6 @@
 import { Container, Graphics } from "pixi.js";
 import { BOARD_X, BOARD_Y, CELL, COLS, FRUIT_COLORS, ROWS, WIDTH, HEIGHT } from "../core";
-import type { Fruit, GridPosition, JuiceEffectResult, ProgressionStage, ShipmentReport } from "../core";
+import type { Fruit, GridPosition, JuiceEffectResult, ProgressionStage } from "../core";
 import {
   addEffectSprite,
   addFruitSprite,
@@ -11,7 +11,6 @@ import {
   drawSparkle,
   easeOut,
   EFFECT_CREAM,
-  EFFECT_INK,
   EFFECT_MINT,
   EFFECT_ORANGE,
   gridToCanvas,
@@ -34,7 +33,6 @@ export class VisualEffectsRenderer {
   private readonly drawHandlers: VisualEffectHandlers = {
     juiceSplash: (effect, elapsed, progress) => this.drawJuiceSplashEffect(effect, elapsed, progress),
     clearPop: (effect, elapsed, progress) => this.drawClearPopEffect(effect, elapsed, progress),
-    shipment: (effect, _elapsed, progress) => this.drawShipmentEffect(effect, progress),
     stageAdvance: (effect, elapsed, progress) => this.drawStageAdvanceEffect(effect, elapsed, progress),
     waterDrop: (effect, elapsed, progress) => this.drawWaterDropEffect(effect, elapsed, progress),
     waterClear: (effect, elapsed, progress) => this.drawWaterClearEffect(effect, elapsed, progress),
@@ -84,19 +82,6 @@ export class VisualEffectsRenderer {
         const point = gridToCanvas(cell);
         return createParticles(point.x, point.y, [EFFECT_CREAM, EFFECT_ORANGE, color], Math.round(3 + intensity * 2.8), 0.82 + intensity * 0.38);
       }),
-    });
-  }
-
-  spawnShipment(report: ShipmentReport): void {
-    this.effects.push({
-      kind: "shipment",
-      start: performance.now(),
-      duration: report.orderCompleted ? 1320 : 1040,
-      score: report.score,
-      streak: report.streak,
-      multiplier: report.multiplier,
-      orderCompleted: report.orderCompleted !== null,
-      totalStock: report.totalStock,
     });
   }
 
@@ -301,62 +286,6 @@ export class VisualEffectsRenderer {
       this.options.layer.addChild(subLabel);
     }
     this.drawParticles(effect.particles, elapsed, progress);
-  }
-
-  private drawShipmentEffect(effect: Extract<VisualEffect, { kind: "shipment" }>, progress: number): void {
-    const graphics = new Graphics();
-    const local = easeOut(progress);
-    const boardCenterX = BOARD_X + (COLS * CELL) / 2;
-    const boardCenterY = BOARD_Y + (ROWS * CELL) / 2;
-    const alpha = Math.max(0, 1 - progress);
-    const accent = effect.orderCompleted ? EFFECT_CREAM : EFFECT_ORANGE;
-    const panelWidth = effect.orderCompleted ? 264 : 236;
-    const panelHeight = effect.orderCompleted ? 108 : 92;
-    graphics.rect(BOARD_X, BOARD_Y, COLS * CELL, ROWS * CELL).fill({ color: EFFECT_ORANGE, alpha: (effect.orderCompleted ? 0.24 : 0.16) * alpha });
-    if (effect.orderCompleted) {
-      graphics.rect(BOARD_X, BOARD_Y, COLS * CELL, ROWS * CELL).fill({ color: EFFECT_MINT, alpha: 0.1 * alpha });
-    }
-    graphics
-      .roundRect(boardCenterX - panelWidth / 2, boardCenterY - panelHeight / 2 - local * 24, panelWidth, panelHeight, 10)
-      .fill({ color: 0x102f34, alpha: 0.94 * alpha })
-      .stroke({ color: accent, width: effect.orderCompleted ? 5 : 4, alpha });
-    graphics
-      .roundRect(boardCenterX - 105, boardCenterY - 25 - local * 24, 210, 52, 7)
-      .stroke({ color: EFFECT_MINT, width: 2, alpha: 0.48 * alpha });
-    graphics
-      .circle(boardCenterX - 96, boardCenterY - 2 - local * 24, 18 + local * 10)
-      .stroke({ color: EFFECT_MINT, width: 4, alpha: 0.76 * alpha });
-    graphics
-      .moveTo(boardCenterX - 78, boardCenterY + 27 - local * 24)
-      .lineTo(boardCenterX + 78, boardCenterY + 27 - local * 24)
-      .stroke({ color: EFFECT_MINT, width: 2, alpha: 0.34 * alpha });
-    for (let index = 0; index < (effect.orderCompleted ? 8 : 5); index += 1) {
-      const angle = (Math.PI * 2 * index) / (effect.orderCompleted ? 8 : 5) + local * 0.7;
-      const distance = 82 + local * 38;
-      drawSparkle(graphics, boardCenterX + Math.cos(angle) * distance, boardCenterY + Math.sin(angle) * distance * 0.72 - local * 24, 5.8, accent, alpha * 0.52);
-    }
-    this.options.layer.addChild(graphics);
-
-    const label = createTextSprite(effect.orderCompleted ? "ORDER COMPLETE" : "SHIPMENT", EFFECT_INK, effect.orderCompleted ? 22 : 23);
-    label.anchor.set(0.5);
-    label.x = boardCenterX;
-    label.y = boardCenterY - 24 - local * 24;
-    label.alpha = alpha;
-    this.options.layer.addChild(label);
-
-    const score = createTextSprite(`+${effect.score.toLocaleString()}`, EFFECT_ORANGE, 28);
-    score.anchor.set(0.5);
-    score.x = boardCenterX;
-    score.y = boardCenterY + 10 - local * 24;
-    score.alpha = alpha;
-    this.options.layer.addChild(score);
-
-    const detail = createTextSprite(`STREAK ${effect.streak}  x${effect.multiplier.toFixed(2)}  STOCK ${effect.totalStock}`, EFFECT_CREAM, 14);
-    detail.anchor.set(0.5);
-    detail.x = boardCenterX;
-    detail.y = boardCenterY + 38 - local * 24;
-    detail.alpha = alpha * 0.9;
-    this.options.layer.addChild(detail);
   }
 
   private drawStageAdvanceEffect(effect: Extract<VisualEffect, { kind: "stageAdvance" }>, elapsed: number, progress: number): void {

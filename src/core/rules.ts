@@ -69,7 +69,6 @@ export function applyJuiceAwards(input: {
   juiceProgress: FruitRecord;
   juiceStock: FruitRecord;
   awards: FruitRecord[];
-  featuredFruit: Fruit;
   difficulty: DifficultyConfig;
 }): JuiceProgressResult {
   const juiceProgress = cloneFruitRecord(input.juiceProgress);

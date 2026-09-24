@@ -1,4 +1,4 @@
-import { applyJuiceAwards, calculateShipmentScore, COLS, FRUITS, getChainScoreMultiplier, getDifficultyConfig, ROWS, isFruitCell, isWaterCell, resolveBoardRules } from "../core";
+import { applyJuiceAwards, COLS, FRUITS, getChainScoreMultiplier, getDifficultyConfig, ROWS, isFruitCell, isWaterCell, resolveBoardRules } from "../core";
 import type { Board, DifficultyConfig, Fruit, FruitRecord } from "../core";
 import { AI_PHASE_WEIGHTS } from "./policy";
 import type { AiPolicy } from "./policy";
@@ -79,15 +79,13 @@ export function evaluateTerminal(board: Board, state: SimState, context: AiEvalu
   const weights = AI_PHASE_WEIGHTS[context.phase];
   const metrics = getBoardMetrics(board);
   const stock = totalStock(state.juiceStock);
-  const shipment = context.snapshot.shipment.enabled ? calculateShipmentScore(stock, 1) * 0.16 : 0;
   const potential = context.phase === "chainBuild" ? getChainPotential(board, context.difficulty, context.chainPotentialCache, context.policy.chainPotentialBudget) : EMPTY_CHAIN_POTENTIAL;
   return (
     metrics.adjacentPairs * weights.chainSetup +
     metrics.readyTriples * weights.chainSetup * 4 +
     potential.bestTriggerChain * weights.chainPotential +
     potential.triggerOptions * weights.triggerOptions +
-    stock * weights.stock +
-    shipment * weights.score -
+    stock * weights.stock -
     metrics.totalHeight * weights.height -
     metrics.holes * weights.holes -
     metrics.topRisk * weights.topRisk -
@@ -171,7 +169,6 @@ function stockDeltaValue(state: SimState, candidate: PlacementCandidate, snapsho
     juiceProgress: state.juiceProgress,
     juiceStock: state.juiceStock,
     awards: candidate.juiceAwards,
-    featuredFruit: snapshot.featuredFruit,
     difficulty: getDifficultyConfig(snapshot.settings.difficulty),
   });
   return Math.max(0, totalStock(next.juiceStock) - totalStock(state.juiceStock));

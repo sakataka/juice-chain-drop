@@ -114,14 +114,6 @@ export class SoundEngine {
     this.liquidNote(680, 0.22, 0.12, 0.12);
   }
 
-  shipment(totalStock: number): void {
-    if (!this.canPlay()) return;
-    const boost = Math.min(0.12, totalStock * 0.012);
-    this.playSfx("shipmentLow", { gain: 0.9 + boost });
-    this.playSfx("shipmentHigh", { delay: 0.08, gain: 0.9 + boost, playbackRate: 1.03 });
-    this.playSfx("shipmentHigh", { delay: 0.22, gain: 0.75 + boost, playbackRate: 1.24 });
-  }
-
   fanfare(): void {
     if (!this.canPlay()) return;
     this.stopBgm();

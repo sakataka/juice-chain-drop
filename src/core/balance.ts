@@ -1,9 +1,6 @@
 import type { DifficultyId, Fruit } from "./types";
 
 const CLEAR_SCORE_UNIT = 50;
-const SHIPMENT_SCORE_UNIT = 160;
-const SHIPMENT_COMBO_STEP = 0.25;
-const SHIPMENT_COMBO_CAP = 2;
 const JUICE_USE_BONUS: Record<Fruit, { flat: number; perCell: number }> = {
   apple: { flat: 0, perCell: 8 },
   orange: { flat: 0, perCell: 6 },
@@ -29,15 +26,6 @@ export function getChainScoreMultiplier(chain: number): number {
 
 export function calculateClearScore(removedCount: number, chain: number, turnMultiplier: number, difficultyMultiplier: number): number {
   return Math.round(removedCount * CLEAR_SCORE_UNIT * getChainScoreMultiplier(chain) * turnMultiplier * difficultyMultiplier);
-}
-
-export function calculateShipmentScore(totalStock: number, difficultyMultiplier: number): number {
-  return Math.round(SHIPMENT_SCORE_UNIT * totalStock * totalStock * difficultyMultiplier);
-}
-
-export function getShipmentComboMultiplier(streak: number): number {
-  if (streak <= 1) return 1;
-  return Math.min(SHIPMENT_COMBO_CAP, 1 + (streak - 1) * SHIPMENT_COMBO_STEP);
 }
 
 export function calculateJuiceUseBonus(fruit: Fruit, changedCells: number, difficultyMultiplier: number): number {

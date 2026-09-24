@@ -11,8 +11,6 @@ const settings: GameSettings = {
   difficulty: "normal",
   mode: "normal",
   aiSpeed: "normal",
-  shippingIntervalSeconds: 45,
-  waterEnabled: true,
   reducedMotion: false,
   sfxVolume: 0.8,
   bgmVolume: 0.45,
@@ -203,14 +201,11 @@ function createAiSnapshot(session: GameSession): AiGameSnapshot {
       state: render.state,
       score: hud.score,
       lastChain: hud.lastChain,
-      featuredFruit: hud.featuredFruit,
       juiceStock: { ...hud.juiceStock },
       juiceProgress: { ...hud.juiceProgress },
-      shipment: { ...hud.shipment },
       settings: {
         mode: hud.settings.mode,
         difficulty: hud.settings.difficulty,
-        shippingIntervalSeconds: hud.settings.shippingIntervalSeconds,
       },
       challenge: session.getAiChallengeContext(),
     };
@@ -220,7 +215,6 @@ function executeAiCommand(session: GameSession, command: AiCommand): GameSession
   if (command.kind === "move") return session.move(command.dx);
   if (command.kind === "rotate") return session.rotate();
   if (command.kind === "hardDrop") return session.hardDrop();
-  if (command.kind === "useJuice") return session.useJuice(command.fruit);
   return null;
 }
 

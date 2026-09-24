@@ -83,7 +83,6 @@ const soundCueHandlers: SoundCueHandlers = {
   splash: (cue) => sound.splash(cue.chain, cue.fruit),
   sparkle: (cue) => sound.sparkle(cue.chain),
   pour: () => sound.pour(),
-  shipment: (cue) => sound.shipment(cue.totalStock),
   fanfare: () => sound.fanfare(),
   gameOver: () => sound.gameOver(),
   bgmContext: (cue) => sound.setBgmContext(cue.mode, cue.moment),
@@ -99,7 +98,6 @@ const visualEffectCueHandlers: VisualEffectCueHandlers = {
   },
   waterDrop: (cue) => renderer.spawnWaterDrop(cue.cell),
   waterClear: (cue) => renderer.spawnWaterClear(cue.cells),
-  shipment: (cue) => renderer.spawnShipment(cue.report),
   stageAdvance: (cue) => renderer.spawnStageAdvance(cue.stage),
 };
 

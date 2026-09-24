@@ -1,10 +1,9 @@
 import type { Texture } from "pixi.js";
-import type { Board, Fruit, FruitPair, GameState, GridPosition, NextPiecePreview, PairPiece, ProgressionStage } from "../core";
+import type { Board, Fruit, GameState, GridPosition, NextPiecePreview, PairPiece, ProgressionStage } from "../core";
 
 export type RenderSnapshot = {
   board: Board;
   active: PairPiece | null;
-  nextQueue: FruitPair[];
   nextPreviews: NextPiecePreview[];
   state: GameState;
 };
@@ -41,16 +40,6 @@ export type VisualEffect =
       chain: number;
       intensity: number;
       particles: Particle[];
-    }
-  | {
-      kind: "shipment";
-      start: number;
-      duration: number;
-      score: number;
-      streak: number;
-      multiplier: number;
-      orderCompleted: boolean;
-      totalStock: number;
     }
   | {
       kind: "stageAdvance";

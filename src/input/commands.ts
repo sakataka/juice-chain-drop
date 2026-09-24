@@ -1,6 +1,6 @@
 import { createAiGameSnapshot } from "../ai";
 import type { AiCommand, AiGameSnapshot, AiRunnerState } from "../ai";
-import type { AiSpeed, DifficultyId, Fruit, GameModeId, GameState, ProgressionStage } from "../core";
+import type { AiSpeed, DifficultyId, GameModeId, GameState, ProgressionStage } from "../core";
 import type { GameSessionCommandResult } from "../session/gameSession";
 import type { GameSession } from "../session/gameSession";
 
@@ -11,15 +11,12 @@ export type GameInputCommand =
   | { kind: "rotate" }
   | { kind: "softDrop" }
   | { kind: "hardDrop" }
-  | { kind: "useJuice"; fruit: Fruit }
   | { kind: "toggleSound" }
   | { kind: "toggleSettings" }
   | { kind: "toggleAi" }
   | { kind: "setDifficulty"; difficulty: DifficultyId }
   | { kind: "setMode"; mode: GameModeId }
   | { kind: "setAiSpeed"; speed: AiSpeed }
-  | { kind: "setShippingIntervalSeconds"; seconds: number }
-  | { kind: "setWaterEnabled"; waterEnabled: boolean }
   | { kind: "setReducedMotion"; reducedMotion: boolean }
   | { kind: "setSfxVolume"; sfxVolume: number }
   | { kind: "setBgmVolume"; bgmVolume: number };
@@ -71,7 +68,6 @@ export class GameCommandBus {
     rotate: () => this.options.session.rotate(),
     softDrop: () => this.options.session.softDrop(),
     hardDrop: () => this.options.session.hardDrop(),
-    useJuice: (command) => this.options.session.useJuice(command.fruit),
     toggleSound: () => {
       this.options.sound.toggle();
       this.syncSoundGameState();
@@ -93,8 +89,6 @@ export class GameCommandBus {
       this.options.ai.setIntervalMs(this.options.aiIntervalForSpeed(command.speed));
       return this.options.session.setAiSpeed(command.speed);
     },
-    setShippingIntervalSeconds: (command) => this.options.session.setShippingIntervalSeconds(command.seconds),
-    setWaterEnabled: (command) => this.options.session.setWaterEnabled(command.waterEnabled),
     setReducedMotion: (command) => this.options.session.setReducedMotion(command.reducedMotion),
     setSfxVolume: (command) => {
       this.options.sound.setSfxVolume(command.sfxVolume);
@@ -160,7 +154,6 @@ function aiCommandToInputCommand(command: Exclude<AiCommand, { kind: "wait" }>):
   if (command.kind === "move") return { kind: "move", dx: command.dx };
   if (command.kind === "rotate") return { kind: "rotate" };
   if (command.kind === "hardDrop") return { kind: "hardDrop" };
-  if (command.kind === "useJuice") return { kind: "useJuice", fruit: command.fruit };
   return assertNever(command);
 }
 

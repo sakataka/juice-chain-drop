@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { applyGravity, applyJuiceEffectRules, calculateClearScore, calculateJuiceUseBonus, createBoard, findClearGroups, GameModel, getDifficultyConfig, getPieceCells, getShipmentComboMultiplier, isValidPiece, makePiece, NEXT_QUEUE_SIZE, randomFruit, resolveBoardRules } from "./index";
+import { applyGravity, applyJuiceEffectRules, calculateClearScore, calculateJuiceUseBonus, createBoard, findClearGroups, GameModel, getDifficultyConfig, getPieceCells, isValidPiece, makeJuiceDrop, makePiece, NEXT_QUEUE_SIZE, randomFruit, resolveBoardRules } from "./index";
 import type { Board, Cell, Fruit, GameState, PairPiece } from "./types";
 
 describe("board rules", () => {
@@ -321,7 +321,6 @@ describe("game model", () => {
   it("applies difficulty score and juice settings", () => {
     const easy = fixedGame();
     easy.start({ difficulty: "easy" });
-    easy.featuredFruit = "orange";
     easy.board = boardFromRows([
       "......",
       "......",
@@ -342,7 +341,6 @@ describe("game model", () => {
 
     const hard = fixedGame();
     hard.start({ difficulty: "hard" });
-    hard.featuredFruit = "orange";
     hard.board = boardFromRows([
       "......",
       "......",
@@ -367,7 +365,6 @@ describe("game model", () => {
 
   it("does not cap normal juice stock and keeps remainder progress", () => {
     const game = fixedGame();
-    game.featuredFruit = "orange";
     game.awardJuice({ apple: 20, orange: 0, lemon: 0, grape: 0, melon: 0, berry: 0 });
 
     expect(game.juiceStock.apple).toBe(5);
@@ -377,22 +374,19 @@ describe("game model", () => {
   it("uses the active difficulty threshold without capping stock", () => {
     const hard = fixedGame();
     hard.start({ difficulty: "hard" });
-    hard.featuredFruit = "orange";
     hard.awardJuice({ apple: 30, orange: 0, lemon: 0, grape: 0, melon: 0, berry: 0 });
 
     expect(hard.juiceStock.apple).toBe(6);
     expect(hard.juiceProgress.apple).toBe(0);
   });
 
-  it("uses only cleared fruit for press progress regardless of featured state", () => {
+  it("uses only cleared fruit for press progress", () => {
     const game = fixedGame();
     game.start();
 
     game.awardJuice({ apple: 2, orange: 0, lemon: 0, grape: 0, melon: 0, berry: 0 });
 
-    expect(game.featuredFruit).toBe("apple");
     expect(game.juiceProgress.apple).toBe(2);
-    expect(game.advanceFeaturedFruit()).toBe("orange");
 
     game.awardJuice({ apple: 2, orange: 2, lemon: 0, grape: 0, melon: 0, berry: 0 });
 
@@ -439,14 +433,12 @@ describe("game model", () => {
       [2, 6],
       [3, 6],
     ]);
-    game.juiceStock.apple = 1;
 
-    const report = game.useJuice("apple");
+    const report = burst(game);
 
-    expect(report?.effect.cells).toHaveLength(9);
-    expect(report?.bonusScore).toBe(72);
+    expect(report?.juiceDrop?.effect.cells).toHaveLength(9);
+    expect(report?.juiceDrop?.bonusScore).toBe(72);
     expect(game.score).toBe(72);
-    expect(game.juiceStock.apple).toBe(0);
     expect(game.board[5][2]).toBeNull();
   });
 
@@ -460,8 +452,7 @@ describe("game model", () => {
       [4, 5],
       [5, 5],
     ]);
-    rowGame.juiceStock.orange = 1;
-    expect(rowGame.useJuice("orange")?.effect.cells).toHaveLength(6);
+    expect(burst(rowGame)?.juiceDrop?.effect.cells).toHaveLength(6);
     expect(rowGame.board[5].every((cell) => cell === null)).toBe(true);
 
     const columnGame = activeJuiceGame("grape");
@@ -479,8 +470,7 @@ describe("game model", () => {
       [2, 10],
       [2, 11],
     ]);
-    columnGame.juiceStock.grape = 1;
-    expect(columnGame.useJuice("grape")?.effect.cells).toHaveLength(12);
+    expect(burst(columnGame)?.juiceDrop?.effect.cells).toHaveLength(12);
     expect(columnGame.board.every((row) => row[2] === null)).toBe(true);
 
     const lemonGame = activeJuiceGame("lemon");
@@ -492,8 +482,7 @@ describe("game model", () => {
       [1, 9],
       [4, 9],
     ]);
-    lemonGame.juiceStock.lemon = 1;
-    expect(lemonGame.useJuice("lemon")?.effect.cells).toHaveLength(4);
+    expect(burst(lemonGame)?.juiceDrop?.effect.cells).toHaveLength(4);
     expect(lemonGame.board.flat().filter((cell) => cell === "lemon")).toHaveLength(4);
   });
 
@@ -502,9 +491,8 @@ describe("game model", () => {
     rowGame.board = createBoard();
     rowGame.board[5][0] = "water";
     rowGame.board[5][1] = "apple";
-    rowGame.juiceStock.orange = 1;
 
-    expect(rowGame.useJuice("orange")?.effect.cells).toEqual(
+    expect(burst(rowGame)?.juiceDrop?.effect.cells).toEqual(
       expect.arrayContaining([
         { x: 0, y: 5 },
         { x: 1, y: 5 },
@@ -516,19 +504,17 @@ describe("game model", () => {
     lemonGame.board = createBoard();
     lemonGame.board[5][1] = "water";
     lemonGame.board[5][2] = "grape";
-    lemonGame.juiceStock.lemon = 1;
-    lemonGame.useJuice("lemon");
+    burst(lemonGame);
     expect(lemonGame.board.flat()).toContain("water");
   });
 
   it("uses melon juice to slow the next turn and multiply piece clear score", () => {
     const game = activeJuiceGame("melon");
-    game.juiceStock.melon = 1;
 
-    const report = game.useJuice("melon");
+    const report = burst(game);
 
-    expect(report?.effect.cells).toHaveLength(0);
-    expect(report?.bonusScore).toBe(120);
+    expect(report?.juiceDrop?.effect.cells).toHaveLength(0);
+    expect(report?.juiceDrop?.bonusScore).toBe(120);
     expect(game.score).toBe(120);
     expect(game.slowTurns).toBe(1);
     expect(game.nextPieceScoreMultiplier).toBe(1.5);
@@ -552,21 +538,18 @@ describe("game model", () => {
     game.board[4][3] = "melon";
     game.board[6][3] = "berry";
     game.board[7][2] = "orange";
-    game.juiceStock.berry = 1;
 
-    const report = game.useJuice("berry");
+    const report = burst(game);
 
-    expect(report?.effect.cells).toHaveLength(5);
-    expect(report?.resolve.chain).toBeGreaterThanOrEqual(1);
-    expect(game.juiceStock.berry).toBe(0);
+    expect(report?.juiceDrop?.effect.cells).toHaveLength(5);
+    expect(report?.chain).toBeGreaterThanOrEqual(1);
   });
 
   it("consumes melon slow turns and piece score multiplier on the next settled pair", () => {
     const game = activeJuiceGame("melon");
-    game.juiceStock.melon = 1;
-    game.useJuice("melon");
+    burst(game);
 
-    const report = game.settlePiece();
+    const report = game.hardDrop();
 
     expect(report).not.toBeNull();
     expect(game.slowTurns).toBe(0);
@@ -658,60 +641,6 @@ describe("game model", () => {
     expect(game.juiceStock.orange).toBe(1);
   });
 
-  it("ships completed juice stock for quadratic score and preserves juice progress", () => {
-    const game = fixedGame();
-    game.start({ difficulty: "hard" });
-    game.juiceStock.apple = 2;
-    game.juiceStock.orange = 1;
-    game.juiceProgress.apple = 4;
-
-    const report = game.shipJuices();
-
-    expect(report).toMatchObject({ score: 1800, baseScore: 1800, orderBonusScore: 0, totalStock: 3, streak: 1, multiplier: 1, orderCompleted: null });
-    expect(game.score).toBe(1800);
-    expect(game.juiceStock).toEqual({ apple: 0, orange: 0, lemon: 0, grape: 0, melon: 0, berry: 0 });
-    expect(game.juiceProgress.apple).toBe(4);
-  });
-
-  it("adds a capped shipment combo multiplier across successful shipments", () => {
-    const game = fixedGame();
-    game.start();
-    game.juiceStock.apple = 1;
-
-    expect(game.shipJuices()).toMatchObject({ score: 160, baseScore: 160, streak: 1, multiplier: 1 });
-
-    game.juiceStock.orange = 1;
-    expect(game.getShipmentPreview()).toMatchObject({ score: 200, baseScore: 160, streak: 2, multiplier: 1.25 });
-    expect(game.shipJuices()).toMatchObject({ score: 200, baseScore: 160, streak: 2, multiplier: 1.25 });
-
-    game.juiceStock.lemon = 1;
-    expect(game.shipJuices()).toMatchObject({ score: 240, baseScore: 160, streak: 3, multiplier: 1.5 });
-    expect(game.score).toBe(600);
-    expect(getShipmentComboMultiplier(99)).toBe(2);
-  });
-
-  it("completes juice orders during shipment and advances to the next order", () => {
-    const game = fixedGame();
-    game.start();
-    expect(game.currentOrder.id).toBe("citrus-line");
-    game.juiceStock.lemon = 2;
-    game.juiceStock.grape = 1;
-
-    const report = game.shipJuices();
-
-    expect(report).toMatchObject({ baseScore: 1440, orderBonusScore: 880, score: 2320, totalStock: 3 });
-    expect(report?.orderCompleted?.id).toBe("citrus-line");
-    expect(game.completedOrders).toBe(1);
-    expect(game.currentOrder.id).toBe("orchard-box");
-  });
-
-  it("does not ship when no completed juice stock exists", () => {
-    const game = fixedGame();
-
-    expect(game.shipJuices()).toBeNull();
-    expect(game.score).toBe(0);
-    expect(game.shipmentStreak).toBe(0);
-  });
 });
 
 function fixedGame(sequence: Fruit[] = ["apple", "orange", "lemon", "grape", "melon", "berry"]): GameModel {
@@ -723,11 +652,16 @@ function fixedGame(sequence: Fruit[] = ["apple", "orange", "lemon", "grape", "me
   });
 }
 
-function activeJuiceGame(axis: Fruit): GameModel {
+function activeJuiceGame(fruit: Fruit): GameModel {
   const game = fixedGame();
   game.state = "playing";
-  game.active = { axis: { x: 2, y: 5, fruit: axis }, satellite: { fruit: "orange", rotation: 0 } };
+  game.active = { ...makeJuiceDrop(fruit), axis: { x: 2, y: 5, fruit } };
   return game;
+}
+
+/** Lands the active bottle where it is, the same path a falling Juice Drop takes. */
+function burst(game: GameModel) {
+  return game.settlePiece();
 }
 
 function boardWithCells(fruit: Fruit, cells: Array<[number, number]>): Board {

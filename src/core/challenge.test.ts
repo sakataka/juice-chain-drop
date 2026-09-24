@@ -7,8 +7,6 @@ const settings: GameSettings = {
   difficulty: "normal",
   mode: "normal",
   aiSpeed: "normal",
-  shippingIntervalSeconds: 45,
-  waterEnabled: true,
   reducedMotion: false,
   sfxVolume: 0.8,
   bgmVolume: 0.45,

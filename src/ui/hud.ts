@@ -2,7 +2,7 @@ import { JuiceMotion } from "./juiceMotion";
 import fruitStripUrl from "../assets/sprites/lab/fruits-v2.png";
 import juiceStripUrl from "../assets/sprites/lab/juices-v2.png";
 import { DIFFICULTY_CONFIGS, FRUIT_COLORS, FRUIT_LABEL, FRUITS, GAME_MODE_CONFIGS, JUICE_EFFECT_LABEL } from "../core";
-import type { AiSpeed, DifficultyId, Fruit, FruitRecord, GameModeId, GameSettings, GameState, GridPosition, JuiceOrder } from "../core";
+import type { AiSpeed, DifficultyId, Fruit, FruitRecord, GameModeId, GameSettings, GameState, GridPosition } from "../core";
 import type { AiRunnerState } from "../ai";
 import type { PlayerStats, RecordScope } from "../storage/stats";
 
@@ -17,14 +17,6 @@ export type HudSnapshot = {
   juiceProgress: FruitRecord;
   juiceDropsCreated: number;
   queuedJuiceDrops: Fruit[];
-  shipment: {
-    enabled: boolean;
-    intervalSeconds: number;
-    remainingMs: number;
-    previewScore: number;
-  };
-  order: JuiceOrder;
-  featuredFruit: Fruit;
   soundEnabled: boolean;
   stats: PlayerStats;
   settings: GameSettings;

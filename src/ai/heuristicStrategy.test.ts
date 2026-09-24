@@ -1,10 +1,10 @@
 import { describe, expect, it } from "bun:test";
-import { DEFAULT_SHIPMENT_INTERVAL_SECONDS, FRUITS, GameModel } from "../core";
+import { FRUITS, GameModel, makeJuiceDrop } from "../core";
 import type { Board, Cell, Fruit, GameModeId } from "../core";
 import { getChainPotential } from "./evaluation";
 import { enumeratePlacements, heuristicAiStrategy } from "./heuristicStrategy";
 import { DEFAULT_AI_POLICY } from "./policy";
-import { cloneBoard, cloneFruitRecord, clonePreview, nextActiveFromPreviews, simulateJuice, simulatePlacement } from "./simulation";
+import { cloneBoard, cloneFruitRecord, clonePreview, nextActiveFromPreviews, simulatePlacement } from "./simulation";
 import type { AiGameSnapshot } from "./types";
 
 describe("heuristic AI strategy", () => {
@@ -17,7 +17,6 @@ describe("heuristic AI strategy", () => {
     const decision = heuristicAiStrategy.choose(createSnapshot(game, { active }));
 
     expect(decision.commands.at(-1)).toEqual({ kind: "hardDrop" });
-    expect(decision.commands.every((command) => command.kind !== "useJuice")).toBe(true);
     expect(enumeratePlacements(game.board, active!)).not.toHaveLength(0);
   });
 
@@ -80,7 +79,7 @@ describe("heuristic AI strategy", () => {
 
     expect(decision.reason).toContain("Juice Drop apple");
     expect(decision.commands.at(-1)).toEqual({ kind: "hardDrop" });
-    expect(decision.commands.every((command) => command.kind !== "rotate" && command.kind !== "useJuice")).toBe(true);
+    expect(decision.commands.every((command) => command.kind !== "rotate")).toBe(true);
     expect(enumeratePlacements(game.board, game.active, game.difficulty)).toHaveLength(6);
   });
 
@@ -340,7 +339,6 @@ describe("heuristic AI strategy", () => {
 
     expect(decision.reason).toContain("Juice Drop apple");
     expect(decision.commands.at(-1)).toEqual({ kind: "hardDrop" });
-    expect(decision.commands.some((command) => command.kind === "useJuice")).toBe(false);
   });
 
   it("keeps simulation inputs immutable", () => {
@@ -359,7 +357,6 @@ describe("heuristic AI strategy", () => {
         nextPreviews: game.nextPreviews,
         juiceStock: game.juiceStock,
         juiceProgress: game.juiceProgress,
-        featuredFruit: game.featuredFruit,
         score: game.score,
         bestChain: 0,
         waterClears: 0,
@@ -374,60 +371,25 @@ describe("heuristic AI strategy", () => {
     expect(game.juiceProgress).toEqual(progressBefore);
   });
 
-  it("scores melon juice like the real game by deferring the piece multiplier", () => {
-    const game = fixedGame();
-    game.start();
-    game.board = boardFromRows([
-      "......",
-      "......",
-      "......",
-      "......",
-      "......",
-      "......",
-      "......",
-      "......",
-      "......",
-      "......",
-      "......",
-      "aaaa..",
-    ]);
-    game.juiceStock.melon = 1;
-    const realReport = game.useJuice("melon");
+  it("scores a landing Juice Drop exactly like the real game", () => {
+    for (const fruit of FRUITS) {
+      const game = fixedGame();
+      game.start();
+      game.board = boardFromRows(["......", "......", "......", "......", "......", "......", "......", "......", "....o.", "..ooa.", ".aaga.", "gaaglo"]);
+      game.active = makeJuiceDrop(fruit);
+      const candidate = enumeratePlacements(game.board, game.active, game.difficulty).find((entry) => entry.commands.at(-1)?.kind === "hardDrop" && entry.commands.length === 2 && entry.commands[0].kind === "move" && entry.commands[0].dx === 1);
+      expect(candidate).toBeDefined();
 
-    const simulated = simulateJuice(
-      {
-        board: boardFromRows([
-          "......",
-          "......",
-          "......",
-          "......",
-          "......",
-          "......",
-          "......",
-          "......",
-          "......",
-          "......",
-          "......",
-          "aaaa..",
-        ]),
-        nextPreviews: game.nextPreviews,
-        juiceStock: { apple: 0, orange: 0, lemon: 0, grape: 0, melon: 1, berry: 0 },
-        juiceProgress: { apple: 0, orange: 0, lemon: 0, grape: 0, melon: 0, berry: 0 },
-        featuredFruit: "apple",
-        score: 0,
-        bestChain: 0,
-        waterClears: 0,
-      },
-      game.active,
-      "melon",
-      game.difficulty,
-    );
+      game.tryMove(1, 0);
+      const report = game.hardDrop();
 
-    expect(realReport).not.toBeNull();
-    expect(simulated.clearScore).toBe(game.score);
+      expect(report?.juiceDrop?.primary).toBe(fruit);
+      expect(candidate!.score + candidate!.landingY).toBe(game.score);
+      expect(candidate!.board).toEqual(game.board);
+    }
   });
 
-  it("simulates press progress without a featured-fruit bonus", () => {
+  it("simulates press progress from cleared fruit", () => {
     const game = fixedGame();
     game.start();
     const next = simulatePlacement(
@@ -449,7 +411,6 @@ describe("heuristic AI strategy", () => {
         nextPreviews: [{ kind: "fruitPair", pair: ["orange", "orange"] }],
         juiceStock: { apple: 0, orange: 0, lemon: 0, grape: 0, melon: 0, berry: 0 },
         juiceProgress: { apple: 2, orange: 0, lemon: 0, grape: 0, melon: 0, berry: 0 },
-        featuredFruit: "apple",
         score: 0,
         bestChain: 0,
         waterClears: 0,
@@ -506,19 +467,11 @@ function createSnapshot(
     state: overrides.state ?? game.state,
     score: overrides.score ?? game.score,
     lastChain: overrides.lastChain ?? game.lastChain,
-    featuredFruit: overrides.featuredFruit ?? game.featuredFruit,
     juiceStock: overrides.juiceStock ?? game.juiceStock,
     juiceProgress: overrides.juiceProgress ?? game.juiceProgress,
-    shipment: overrides.shipment ?? {
-      enabled: true,
-      intervalSeconds: DEFAULT_SHIPMENT_INTERVAL_SECONDS,
-      remainingMs: DEFAULT_SHIPMENT_INTERVAL_SECONDS * 1000,
-      previewScore: game.getShipmentPreview().score,
-    },
     settings: overrides.settings ?? {
       mode,
       difficulty: game.difficulty.id,
-      shippingIntervalSeconds: DEFAULT_SHIPMENT_INTERVAL_SECONDS,
     },
     challenge: overrides.challenge ?? {
       mode,

@@ -9,11 +9,6 @@ export type AiSpeed = "slow" | "normal" | "fast";
 export type ProgressionStage = 0 | 1 | 2 | 3;
 export type BgmMoment = "flow" | "pressReady" | "juiceDrop";
 
-export type RangeConfig = {
-  min: number;
-  max: number;
-};
-
 export type DifficultyConfig = {
   id: DifficultyId;
   label: string;
@@ -21,8 +16,6 @@ export type DifficultyConfig = {
   slowDropInterval: number;
   scoreMultiplier: number;
   juiceThreshold: number;
-  waterIntervalMs: RangeConfig;
-  waterBurst: RangeConfig;
   progressionStageDurationMs: number;
 };
 
@@ -40,8 +33,6 @@ export type GameSettings = {
   difficulty: DifficultyId;
   mode: GameModeId;
   aiSpeed: AiSpeed;
-  shippingIntervalSeconds: number;
-  waterEnabled: boolean;
   reducedMotion: boolean;
   sfxVolume: number;
   bgmVolume: number;
@@ -95,21 +86,4 @@ export type ResolveReport = {
     primary: Fruit;
     bonusScore: number;
   };
-};
-
-export type JuiceUseReport = {
-  effect: JuiceEffectResult;
-  primary: Fruit;
-  bonusScore: number;
-  resolve: ResolveReport;
-};
-
-export type ShipmentReport = {
-  score: number;
-  baseScore: number;
-  orderBonusScore: number;
-  totalStock: number;
-  streak: number;
-  multiplier: number;
-  orderCompleted: import("./orders").JuiceOrder | null;
 };

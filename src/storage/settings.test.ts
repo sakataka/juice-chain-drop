@@ -20,13 +20,11 @@ describe("game settings storage", () => {
 
   it("saves selected difficulty", () => {
     const storage = memoryStorage();
-    saveGameSettings({ difficulty: "hard", mode: "chainChallenge", aiSpeed: "fast", shippingIntervalSeconds: 75, waterEnabled: false, reducedMotion: true, sfxVolume: 0.25, bgmVolume: 0.75 }, storage);
+    saveGameSettings({ difficulty: "hard", mode: "chainChallenge", aiSpeed: "fast", reducedMotion: true, sfxVolume: 0.25, bgmVolume: 0.75 }, storage);
 
     expect(loadGameSettings(storage).difficulty).toBe("hard");
     expect(loadGameSettings(storage).mode).toBe("chainChallenge");
     expect(loadGameSettings(storage).aiSpeed).toBe("fast");
-    expect(loadGameSettings(storage).shippingIntervalSeconds).toBe(75);
-    expect(loadGameSettings(storage).waterEnabled).toBe(false);
     expect(loadGameSettings(storage).reducedMotion).toBe(true);
     expect(loadGameSettings(storage).sfxVolume).toBe(0.25);
     expect(loadGameSettings(storage).bgmVolume).toBe(0.75);
@@ -46,22 +44,11 @@ describe("game settings storage", () => {
     expect(loadGameSettings(storage).bgmVolume).toBe(0);
   });
 
-  it("normalizes shipment interval and ignores removed shipping flags", () => {
+  it("drops settings from removed features when loading older saves", () => {
     const storage = memoryStorage();
-    storage.setItem("juice-chain-drop:settings", JSON.stringify({ shippingIntervalSeconds: 999 }));
-    expect(loadGameSettings(storage).shippingIntervalSeconds).toBe(600);
+    storage.setItem("juice-chain-drop:settings", JSON.stringify({ difficulty: "hard", shippingIntervalSeconds: 999, waterEnabled: false }));
 
-    storage.setItem("juice-chain-drop:settings", JSON.stringify({ shippingEnabled: false }));
-    expect(loadGameSettings(storage).shippingIntervalSeconds).toBe(DEFAULT_GAME_SETTINGS.shippingIntervalSeconds);
-  });
-
-  it("defaults water hazards on unless explicitly disabled", () => {
-    const storage = memoryStorage();
-    storage.setItem("juice-chain-drop:settings", JSON.stringify({ waterEnabled: "no" }));
-    expect(loadGameSettings(storage).waterEnabled).toBe(true);
-
-    storage.setItem("juice-chain-drop:settings", JSON.stringify({ waterEnabled: false }));
-    expect(loadGameSettings(storage).waterEnabled).toBe(false);
+    expect(loadGameSettings(storage)).toEqual({ ...DEFAULT_GAME_SETTINGS, difficulty: "hard" });
   });
 });
 

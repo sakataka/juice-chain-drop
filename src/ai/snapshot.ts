@@ -13,14 +13,11 @@ export function createAiGameSnapshot(session: GameSession): AiGameSnapshot {
     state: render.state,
     score: hud.score,
     lastChain: hud.lastChain,
-    featuredFruit: hud.featuredFruit,
     juiceStock: { ...hud.juiceStock },
     juiceProgress: { ...hud.juiceProgress },
-    shipment: { ...hud.shipment },
     settings: {
       mode: hud.settings.mode,
       difficulty: hud.settings.difficulty,
-      shippingIntervalSeconds: hud.settings.shippingIntervalSeconds,
     },
     challenge: session.getAiChallengeContext(),
   };

@@ -1,5 +1,5 @@
 import { GAME_MODE_CONFIGS, PROGRESSION_DROP_INTERVAL_MULTIPLIERS, getChallengeSnapshot, getDifficultyConfig, updateChallenge } from "../core";
-import type { BgmMoment, ChallengeRuntimeState, ChallengeResult, DifficultyId, Fruit, GameModeId, GameSettings, GridPosition, JuiceEffectResult, ProgressionStage, ResolveReport, ShipmentReport } from "../core";
+import type { BgmMoment, ChallengeRuntimeState, ChallengeResult, DifficultyId, Fruit, GameModeId, GameSettings, GridPosition, JuiceEffectResult, ProgressionStage, ResolveReport } from "../core";
 import { createChallengeState } from "../core";
 import { completePlayerStats, getScopedRecord } from "../storage/stats";
 import type { PlayerStats, RecordScope } from "../storage/stats";
@@ -17,7 +17,6 @@ export type SoundCue =
   | { kind: "splash"; chain: number; fruit: Fruit }
   | { kind: "sparkle"; chain: number }
   | { kind: "pour" }
-  | { kind: "shipment"; totalStock: number }
   | { kind: "fanfare" }
   | { kind: "gameOver" }
   | { kind: "bgmContext"; mode: GameModeId; moment: BgmMoment }
@@ -29,7 +28,6 @@ export type VisualEffectCue =
   | { kind: "clearPop"; cells: GridPosition[]; fruit: Fruit; chain: number }
   | { kind: "waterDrop"; cell: GridPosition }
   | { kind: "waterClear"; cells: GridPosition[] }
-  | { kind: "shipment"; report: ShipmentReport }
   | { kind: "stageAdvance"; stage: ProgressionStage };
 
 export type GameSessionCommandResult = {
@@ -60,7 +58,6 @@ const NO_RESULT: GameSessionCommandResult = {
 
 export class GameSession {
   private dropTimer = 0;
-  private shipmentTimer = 0;
   private elapsedPlayingMs = 0;
   private bgmStage: ProgressionStage = 0;
   private lastBgmContext = "";
@@ -82,7 +79,6 @@ export class GameSession {
     this.recordScope = "player";
     this.resetChallenge("Active");
     this.dropTimer = 0;
-    this.shipmentTimer = 0;
     this.elapsedPlayingMs = 0;
     this.bgmStage = 0;
     this.lastBgmContext = "";
@@ -167,15 +163,6 @@ export class GameSession {
     return result;
   }
 
-  useJuice(fruit: Fruit): GameSessionCommandResult {
-    const report = this.game.useJuice(fruit);
-    if (!report) return NO_RESULT;
-    const result = createResult({ sounds: [{ kind: "pour" }], shouldRender: true, shouldUpdateHud: true });
-    result.effects.push({ kind: "juiceSplash", effect: report.effect, primary: report.primary });
-    this.applyResolveFeedback(report.resolve, result);
-    return result;
-  }
-
   tick(deltaMs: number): GameSessionCommandResult {
     if (this.game.state !== "playing" || !this.game.active) {
       return NO_RESULT;
@@ -225,20 +212,6 @@ export class GameSession {
     return createResult({ shouldUpdateHud: true });
   }
 
-  setShippingIntervalSeconds(shippingIntervalSeconds: number): GameSessionCommandResult {
-    const normalized = Math.max(0, Math.min(600, Math.round(shippingIntervalSeconds)));
-    this.settings = { ...this.settings, shippingIntervalSeconds: normalized };
-    this.shipmentTimer = Math.min(this.shipmentTimer, this.getShipmentIntervalMs());
-    this.options.saveSettings(this.settings);
-    return createResult({ shouldUpdateHud: true });
-  }
-
-  setWaterEnabled(waterEnabled: boolean): GameSessionCommandResult {
-    this.settings = { ...this.settings, waterEnabled };
-    this.options.saveSettings(this.settings);
-    return createResult({ shouldUpdateHud: true });
-  }
-
   setReducedMotion(reducedMotion: boolean): GameSessionCommandResult {
     this.settings = { ...this.settings, reducedMotion };
     this.options.saveSettings(this.settings);
@@ -277,14 +250,6 @@ export class GameSession {
       juiceProgress: this.game.juiceProgress,
       juiceDropsCreated: this.game.juiceDropsCreated,
       queuedJuiceDrops: [...this.game.queuedJuiceDrops],
-      shipment: {
-        enabled: this.settings.shippingIntervalSeconds > 0,
-        intervalSeconds: this.settings.shippingIntervalSeconds,
-        remainingMs: this.getShipmentRemainingMs(),
-        previewScore: this.game.getShipmentPreview().score,
-      },
-      order: this.game.currentOrder,
-      featuredFruit: this.game.featuredFruit,
       soundEnabled: this.options.soundEnabled(),
       stats: this.stats,
       settings: this.settings,
@@ -296,7 +261,6 @@ export class GameSession {
     return {
       board: this.game.board,
       active: this.game.active,
-      nextQueue: this.game.nextQueue,
       nextPreviews: this.game.nextPreviews,
       state: this.game.state,
     };
@@ -421,16 +385,6 @@ export class GameSession {
     if (key === this.lastBgmContext) return;
     this.lastBgmContext = key;
     result.sounds.push({ kind: "bgmContext", mode: this.settings.mode, moment });
-  }
-
-  private getShipmentRemainingMs(): number {
-    const intervalMs = this.getShipmentIntervalMs();
-    if (intervalMs <= 0) return 0;
-    return Math.max(0, intervalMs - this.shipmentTimer);
-  }
-
-  private getShipmentIntervalMs(): number {
-    return this.settings.shippingIntervalSeconds * 1000;
   }
 
   private recordCurrentGameOver(result: GameSessionCommandResult): void {

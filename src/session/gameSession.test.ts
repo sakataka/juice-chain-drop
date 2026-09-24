@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import { GameModel } from "../core/game";
-import { DEFAULT_SHIPMENT_INTERVAL_SECONDS, DIFFICULTY_CONFIGS, WATER_GRACE_MS } from "../core";
+import { DIFFICULTY_CONFIGS, makeJuiceDrop } from "../core";
 import type { Board, Fruit, GameSettings } from "../core";
 import type { PlayerStats } from "../storage/stats";
 import { GameSession } from "./gameSession";
@@ -9,8 +9,6 @@ const settings: GameSettings = {
   difficulty: "normal",
   mode: "normal",
   aiSpeed: "normal",
-  shippingIntervalSeconds: DEFAULT_SHIPMENT_INTERVAL_SECONDS,
-  waterEnabled: true,
   reducedMotion: false,
   sfxVolume: 0.8,
   bgmVolume: 0.45,
@@ -58,7 +56,7 @@ describe("GameSession", () => {
   });
 
   it("only requests render work when visible game state changes", () => {
-    const { session } = createSession({ settings: { ...settings, waterEnabled: false } });
+    const { session } = createSession({ settings: { ...settings } });
     session.start();
 
     expect(session.tick(1).shouldRender).toBe(false);
@@ -68,7 +66,7 @@ describe("GameSession", () => {
   });
 
   it("starts a fresh gravity interval after a hard drop spawns the next piece", () => {
-    const { session } = createSession({ settings: { ...settings, waterEnabled: false } });
+    const { session } = createSession({ settings: { ...settings } });
     session.start();
     session.tick(DIFFICULTY_CONFIGS.normal.dropInterval - 1);
     session.hardDrop();
@@ -165,20 +163,6 @@ describe("GameSession", () => {
     expect(result.sounds).toContainEqual({ kind: "bgmContext", mode: "chainChallenge", moment: "flow" });
   });
 
-  it("keeps completed juice for Juice Drop instead of auto-shipping it", () => {
-    const { session, game } = createSession();
-    session.start();
-    game.juiceStock.apple = 2;
-    game.juiceStock.orange = 1;
-
-    const result = session.tick(DEFAULT_SHIPMENT_INTERVAL_SECONDS * 1000);
-
-    expect(result.sounds.some((cue) => cue.kind === "shipment")).toBe(false);
-    expect(result.effects.some((effect) => effect.kind === "shipment")).toBe(false);
-    expect(session.getHudSnapshot().score).toBeLessThan(1440);
-    expect(game.juiceStock.apple).toBe(2);
-  });
-
   it("ends score attack when the target is reached", () => {
     const { session, game } = createSession({ settings: { ...settings, mode: "scoreAttack" } });
     session.start();
@@ -210,42 +194,17 @@ describe("GameSession", () => {
     expect(session.getHudSnapshot().challenge.resultDetailValue).toBe("0 chain");
   });
 
-  it("does not advance shipment timing while paused", () => {
-    const { session, game } = createSession();
-    session.start();
-    game.juiceStock.apple = 1;
-    session.togglePause();
-
-    const result = session.tick(DEFAULT_SHIPMENT_INTERVAL_SECONDS * 1000);
-
-    expect(result.sounds).toEqual([]);
-    expect(game.juiceStock.apple).toBe(1);
-    expect(session.getHudSnapshot().shipment.remainingMs).toBe(DEFAULT_SHIPMENT_INTERVAL_SECONDS * 1000);
-  });
-
-  it("does not ship when the shipping interval is zero", () => {
-    const { session, game } = createSession({ settings: { ...settings, shippingIntervalSeconds: 0, waterEnabled: false } });
-    session.start();
-    game.juiceStock.apple = 1;
-
-    const result = session.tick(DEFAULT_SHIPMENT_INTERVAL_SECONDS * 1000);
-
-    expect(result.sounds).toEqual([]);
-    expect(game.juiceStock.apple).toBe(1);
-    expect(session.getHudSnapshot().shipment.enabled).toBe(false);
-  });
-
   it("does not inject timed water into normal mode", () => {
     const { session, game } = createSession();
     session.start();
 
-    const result = session.tick(WATER_GRACE_MS * 3);
+    const result = session.tick(30_000);
     expect(result.effects.some((effect) => effect.kind === "waterDrop")).toBe(false);
     expect(game.board.flat()).not.toContain("water");
   });
 
   it("raises progression stage over time and speeds automatic drops", () => {
-    const { session, game } = createSession({ settings: { ...settings, waterEnabled: false } });
+    const { session, game } = createSession({ settings: { ...settings } });
     session.start();
 
     const stageChange = session.tick(60_000);
@@ -261,7 +220,7 @@ describe("GameSession", () => {
   });
 
   it("does not advance progression stage while paused", () => {
-    const { session } = createSession({ settings: { ...settings, waterEnabled: false } });
+    const { session } = createSession({ settings: { ...settings } });
     session.start();
     session.togglePause();
 
@@ -270,42 +229,21 @@ describe("GameSession", () => {
     expect(session.getBgmStage()).toBe(0);
   });
 
-  it("does not rotate a hidden featured-fruit modifier", () => {
-    const { session } = createSession();
-    session.start();
-
-    expect(session.getHudSnapshot().featuredFruit).toBe("apple");
-    const result = session.tick(30_000);
-
-    expect(result.shouldUpdateHud).toBe(false);
-    expect(session.getHudSnapshot().featuredFruit).toBe("apple");
-  });
-
-  it("does not drop water when disabled or outside normal mode", () => {
-    const disabled = createSession({ settings: { ...settings, waterEnabled: false } });
-    disabled.session.start();
-    expect(disabled.session.tick(WATER_GRACE_MS).effects.some((effect) => effect.kind === "waterDrop")).toBe(false);
-
-    const challenge = createSession({ settings: { ...settings, mode: "scoreAttack" } });
-    challenge.session.start();
-    expect(challenge.session.tick(WATER_GRACE_MS).effects.some((effect) => effect.kind === "waterDrop")).toBe(false);
-  });
-
   it("starts water cleanup with 30 water cells and does not add timed drops", () => {
-    const { session, game } = createSession({ settings: { ...settings, mode: "waterCleanup", waterEnabled: false } });
+    const { session, game } = createSession({ settings: { ...settings, mode: "waterCleanup" } });
     const start = session.start();
 
     expect(start.effects.filter((effect) => effect.kind === "waterDrop")).toHaveLength(30);
     expect(game.countWaterCells()).toBe(30);
 
-    const tick = session.tick(WATER_GRACE_MS);
+    const tick = session.tick(30_000);
 
     expect(tick.effects.some((effect) => effect.kind === "waterDrop")).toBe(false);
     expect(game.countWaterCells()).toBe(30);
   });
 
   it("tracks water cleanup completion from remaining water", () => {
-    const { session, game } = createSession({ settings: { ...settings, mode: "waterCleanup", waterEnabled: false } });
+    const { session, game } = createSession({ settings: { ...settings, mode: "waterCleanup" } });
     session.start();
     game.board = createWaterClearBoard();
 
@@ -321,13 +259,13 @@ describe("GameSession", () => {
   });
 
   it("shows water cleanup clear result when juice removes the last water", () => {
-    const { session, game } = createSession({ settings: { ...settings, mode: "waterCleanup", waterEnabled: false } });
+    const { session, game } = createSession({ settings: { ...settings, mode: "waterCleanup" } });
     session.start();
     session.tick(12_340);
     game.board = createJuiceWaterClearBoard();
-    game.juiceStock.orange = 1;
+    game.active = { ...makeJuiceDrop("orange"), axis: { x: 2, y: 1, fruit: "orange" } };
 
-    const result = session.useJuice("orange");
+    const result = session.settlePiece();
 
     expect(result.gameOverRecorded).toBe(true);
     expect(result.sounds).toContainEqual({ kind: "fanfare" });
